@@ -253,7 +253,11 @@ def main():
     valid = set(items.movie_id.astype(int))
 
     os.makedirs(args.out, exist_ok=True)
+    out_path = os.path.join(args.out, "recall_results.json")
     results = {}
+    if os.path.exists(out_path):
+        with open(out_path, encoding="utf-8") as fh:
+            results = json.load(fh)
     for name in args.channels:
         t0 = time.perf_counter()
         if name == "pop":
@@ -277,8 +281,8 @@ def main():
         m = metrics_for(users, recs, test_gt, genres_map, valid)
         m["latency_ms_per_user"] = round(ch.latency * 1000, 2)
         results[name] = m
-        print(name, json.dumps(m))
-        with open(os.path.join(args.out, "recall_results.json"), "w", encoding="utf-8") as fh:
+        print(name, json.dumps(m), flush=True)
+        with open(out_path, "w", encoding="utf-8") as fh:
             json.dump(results, fh, ensure_ascii=False, indent=2)
 
 
