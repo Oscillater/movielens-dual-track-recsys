@@ -87,7 +87,7 @@ class Ranker(nn.Module):
             self.mlp = nn.Sequential(*layers)
 
     def forward(self, x):  # x: [B, F] int64
-        first = self.linear(x).squeeze(-1)                     # [B]
+        first = self.linear(x).squeeze(-1).sum(-1)             # [B] first-order over fields
         if self.mode == "lr":
             return first
         v = self.emb(x)                                        # [B, F, E]
