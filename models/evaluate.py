@@ -233,9 +233,9 @@ def main():
     args = ap.parse_args()
 
     seqs, test_gt, items, genres_map = load_inputs(args.data)
-    users_all = sorted(test_gt)
+    users_all = sorted(u for u in test_gt if len(seqs.get(u, [])) >= 1)
     users = users_all if not args.eval_users else users_all[: args.eval_users]
-    seen_map = {u: set(seqs.get(u, [])) for u in users}
+    seen_map = {u: set(int(i) for i in seqs[u]) for u in users}
     valid = set(items.movie_id.astype(int))
 
     os.makedirs(args.out, exist_ok=True)

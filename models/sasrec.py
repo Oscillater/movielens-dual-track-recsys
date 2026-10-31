@@ -23,13 +23,14 @@ import torch.nn as nn
 
 # ---------------------------------------------------------------- data
 def load_seqs(path):
+    """user_id -> np.int32 array (memory-lean; 24.7M ints as python lists ~ 700MB)."""
     seqs = {}
     with open(path, encoding="utf-8") as fh:
         next(fh)  # header
         for line in fh:
             uid, _, rest = line.rstrip("\n").partition(",")
             if rest:
-                seqs[int(uid)] = [int(x) for x in rest.split()]
+                seqs[int(uid)] = np.fromstring(rest, dtype=np.int32, sep=" ")
     return seqs
 
 
@@ -78,13 +79,13 @@ class SASRec(nn.Module):
         return self.last_ln(x)  # [B, L, d]
 
 
-def make_batch(seqs, positions, args, device):
+def make_batch(seqs, users, ts, args, device):
     seq_b, pos_b = [], []
-    for user, t in positions:
+    for user, t in zip(users, ts):
         hist = seqs[user][:t][-args.maxlen:]
         pad = args.maxlen - len(hist)
-        seq_b.append([0] * pad + hist)
-        pos_b.append(seqs[user][t])
+        seq_b.append([0] * pad + hist.tolist())
+        pos_b.append(int(seqs[user][t]))
     return (
         torch.tensor(seq_b, dtype=torch.long, device=device),
         torch.tensor(pos_b, dtype=torch.long, device=device),
@@ -112,7 +113,7 @@ def evaluate(model, seqs, targets, item_ids_t, device, args):
         hist_b = []
         for u in chunk:
             h = seqs[u][-args.maxlen:]
-            hist_b.append([0] * (args.maxlen - len(h)) + h)
+            hist_b.append([0] * (args.maxlen - len(h)) + h.tolist())
         scores = full_rank_scores(model, torch.tensor(hist_b, dtype=torch.long), item_ids_t, device)
         top = torch.topk(scores, 50, dim=1).indices.tolist()
         for row, u in enumerate(chunk):
@@ -154,11 +155,22 @@ def main():
 
     seqs = load_seqs(args.seqs)
     gt = load_gt(args.gt)
-    args.n_items = max(max(s) for s in seqs.values() if s) + 1
-    args.n_items = max(args.n_items, max(gt["test"].values()) + 1)
-    exclude_sets = {u: set(s) for u, s in seqs.items()}
-    pool = [(u, t) for u, s in seqs.items() for t in range(1, len(s))]
-    item_ids = np.array(sorted({i for s in seqs.values() for i in s} | set(gt["test"].values())))
+    args.n_items = max(max(int(s.max()) for s in seqs.values() if s.size) + 1,
+                       max(gt["test"].values()) + 1)
+    # position sampling without materialising a pool: users weighted by history
+    # length, target index t ~ U{1..len-1}; fully vectorised
+    user_arr = np.array([u for u, s in seqs.items() if s.size >= 2], dtype=np.int64)
+    lens = np.array([seqs[u].size for u in user_arr], dtype=np.int64)
+    cum = np.cumsum(lens)
+    rng_np = np.random.default_rng(args.seed)
+
+    def sample_positions(n):
+        uidx = np.minimum(np.searchsorted(cum, rng_np.random(n) * cum[-1], side="right"),
+                          len(user_arr) - 1)
+        ts = 1 + (rng_np.random(n) * (lens[uidx] - 1)).astype(np.int64)
+        return user_arr[uidx], np.minimum(ts, lens[uidx] - 1)
+
+    item_ids = np.array(sorted({int(i) for s in seqs.values() if s.size for i in np.unique(s)} | set(gt["test"].values())))
     item_ids_t = torch.tensor(item_ids, dtype=torch.long)
 
     model = SASRec(args.n_items, args.d, args.layers, args.heads, args.maxlen, args.dropout)
@@ -169,11 +181,11 @@ def main():
     for epoch in range(1, args.epochs + 1):
         model.train()
         t0 = time.time()
-        positions = rng.sample(pool, min(args.positions_per_epoch, len(pool)))
-        rng.shuffle(positions)
+        n_pos = min(args.positions_per_epoch, int(cum[-1]))
+        users_b, ts_b = sample_positions(n_pos)
         total, hits = 0.0, 0
-        for s in range(0, len(positions), args.batch):
-            seq_b, pos_b = make_batch(seqs, positions[s:s + args.batch], args, device)
+        for s in range(0, n_pos, args.batch):
+            seq_b, pos_b = make_batch(seqs, users_b[s:s + args.batch], ts_b[s:s + args.batch], args, device)
             h = model(seq_b)[:, -1, :]                                        # [B, d]
             logits = h @ model.item_emb.weight.T                              # [B, n_items+1]
             pos_logits = logits.gather(1, pos_b.unsqueeze(1)).squeeze(1)      # [B]
@@ -189,7 +201,7 @@ def main():
             total += loss.item() * pos_b.shape[0]
             hits += (pos_logits.unsqueeze(1) > neg_logits).all(dim=1).sum().item()
         val_m = evaluate(model, seqs, gt["val"], item_ids_t, device, args)
-        history.append({"epoch": epoch, "loss": total / len(positions), "acc": hits / len(positions),
+        history.append({"epoch": epoch, "loss": total / n_pos, "acc": hits / n_pos,
                         "val": val_m, "minutes": round((time.time() - t0) / 60, 1)})
         print(json.dumps(history[-1], ensure_ascii=False))
         if val_m["NDCG@10"] > best_ndcg:
