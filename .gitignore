@@ -1,0 +1,14 @@
+# 数据集与产物不入库（体积大，可由脚本重建/重新下载）
+data/
+artifacts/
+logs/
+models/checkpoints/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# 系统
+.DS_Store
+Thumbs.db
