@@ -37,7 +37,16 @@ def load_inputs(data_dir):
             uid, mid, split = line.rstrip("\n").split(",")
             if split == "test":
                 test_gt[int(uid)] = int(mid)
-    items = pd.read_csv(os.path.join(data_dir, "item_stats.csv"))
+    # item_stats.csv: movie_id,n_ratings,avg_rating,title,year — titles may
+    # contain unquoted commas, so parse only the first three numeric columns
+    rows = []
+    with open(os.path.join(data_dir, "item_stats.csv"), encoding="utf-8") as fh:
+        next(fh)
+        for line in fh:
+            p = line.rstrip("\n").split(",")
+            if len(p) >= 3:
+                rows.append((int(p[0]), int(p[1]), float(p[2])))
+    items = pd.DataFrame(rows, columns=["movie_id", "n_ratings", "avg_rating"])
     genres_map = {}
     with open(os.path.join(data_dir, "movies.csv"), encoding="utf-8") as fh:
         next(fh)
