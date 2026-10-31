@@ -1,0 +1,15 @@
+# Local compatibility fix for Docker 29 reverse DNS names.
+# Official files remain unchanged in lab03-cluster-files/.
+# Applied automatically by `docker compose up` (without an explicit -f).
+services:
+  worker1:
+    volumes:
+      - ./config/worker1/hbase-site.xml:/usr/local/hbase/conf/hbase-site.xml:ro
+  worker2:
+    volumes:
+      - ./config/worker2/hbase-site.xml:/usr/local/hbase/conf/hbase-site.xml:ro
+  # Spark 3.5.9 installed in master's writable layer, committed as
+  # bigdata/hbase:2.6.1-hadoop3.3.6-spark (2026-10-31, course project).
+  # This override keeps the Spark install across container recreation.
+  master:
+    image: bigdata/hbase:2.6.1-hadoop3.3.6-spark
