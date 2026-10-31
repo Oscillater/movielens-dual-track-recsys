@@ -25,17 +25,31 @@ spark.sql("USE movie")
 ratings = spark.table("movie.dwd_ratings").filter("split = 'train'")
 movies = spark.table("movie.dwd_movies")
 
+def workload(sample, movies):
+    """heavy, shuffle-bound pipeline so codegen noise is negligible"""
+    per_user = (
+        sample.join(movies.select("movie_id", "genres"), "movie_id")
+        .select("user_id", "rating", F.explode("genres").alias("genre"))
+        .groupBy("user_id", "genre")
+        .agg(F.count("*").alias("n"), F.avg("rating").alias("avg"))
+    )
+    return (
+        per_user.groupBy("genre")
+        .agg(F.count("*").alias("n"), F.avg("avg").alias("avg_of_avg"),
+             F.stddev("avg").alias("std"))
+        .orderBy(F.desc("n"))
+        .count()
+    )
+
+
 results = []
+# warmup pass: absorbs JVM/codegen/shuffle-service initialisation
+workload(ratings.sample(fraction=0.1, seed=7), movies)
+
 for frac in [0.25, 0.5, 1.0]:
     sample = ratings.sample(fraction=frac, seed=42)
     t0 = time.time()
-    n = (
-        sample.join(movies.select("movie_id", "genres"), "movie_id")
-        .select("user_id", "rating", F.explode("genres").alias("genre"))
-        .groupBy("genre")
-        .agg(F.count("*").alias("n"), F.avg("rating").alias("avg"))
-        .count()
-    )
+    n = workload(sample, movies)
     dt = round(time.time() - t0, 1)
     results.append({"fraction": frac, "runtime_s": dt, "genre_rows": n})
     print(json.dumps(results[-1]), flush=True)

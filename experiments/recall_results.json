@@ -1,0 +1,32 @@
+{
+  "pop": {
+    "n_users": 162541,
+    "Recall@10": 0.0441,
+    "Recall@50": 0.129,
+    "NDCG@10": 0.022,
+    "NDCG@50": 0.0402,
+    "coverage": 0.0085,
+    "genre_diversity@50": 16.57,
+    "latency_ms_per_user": 0.06
+  },
+  "itemcf": {
+    "n_users": 162541,
+    "Recall@10": 0.0672,
+    "Recall@50": 0.2101,
+    "NDCG@10": 0.033,
+    "NDCG@50": 0.0637,
+    "coverage": 0.0624,
+    "genre_diversity@50": 16.14,
+    "latency_ms_per_user": 4.49
+  },
+  "als": {
+    "n_users": 162541,
+    "Recall@10": 0.0,
+    "Recall@50": 0.0001,
+    "NDCG@10": 0.0,
+    "NDCG@50": 0.0,
+    "coverage": 0.0889,
+    "genre_diversity@50": 12.54,
+    "latency_ms_per_user": 2.99
+  }
+}

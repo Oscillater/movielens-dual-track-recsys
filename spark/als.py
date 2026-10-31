@@ -44,17 +44,30 @@ evaluator = RegressionEvaluator(metricName="rmse", labelCol="rating", prediction
 rmse = evaluator.evaluate(preds)
 print(f"ALS_RMSE val={rmse:.4f} rank={RANK} reg={REG} iter={MAX_ITER}")
 
-uf = model.userFactors.select(
+# implicit-feedback model for RANKING (explicit ALS optimises rating
+# prediction and its top-lists are dominated by universally high-rated
+# items; binary preference + alpha confidence is the standard fix:
+# confidence = 1 + alpha * rating = 41 for every train event)
+train_imp = train.select("user_id", "movie_id").withColumn("rating", F.lit(1.0))
+als_imp = ALS(
+    userCol="user_id", itemCol="movie_id", ratingCol="rating",
+    rank=RANK, regParam=0.05, maxIter=MAX_ITER, alpha=40.0,
+    implicitPrefs=True, coldStartStrategy="drop", seed=42,
+)
+model_imp = als_imp.fit(train_imp)
+
+uf = model_imp.userFactors.select(
     F.col("id").alias("user_id"),
     *[F.col("features").getItem(i).alias(f"f{i}") for i in range(RANK)],
 )
-iff = model.itemFactors.select(
+iff = model_imp.itemFactors.select(
     F.col("id").alias("movie_id"),
     *[F.col("features").getItem(i).alias(f"f{i}") for i in range(RANK)],
 )
 uf.coalesce(1).write.mode("overwrite").option("header", True).csv("/project/als/user_factors")
 iff.coalesce(1).write.mode("overwrite").option("header", True).csv("/project/als/item_factors")
 
-metrics = {"rmse_val": rmse, "rank": RANK, "reg": REG, "max_iter": MAX_ITER}
+metrics = {"rmse_val_explicit": rmse, "rank": RANK, "reg": REG, "max_iter": MAX_ITER,
+           "implicit": {"alpha": 40.0, "reg": 0.05, "pref": "all train events = 1.0"}}
 spark.sparkContext.parallelize([json.dumps(metrics)]).coalesce(1).saveAsTextFile("/project/als/metrics")
 spark.stop()
