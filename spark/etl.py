@@ -141,8 +141,8 @@ def stage_dws(spark, pop_min=POP_MIN, hist_cap=HIST_CAP):
              .agg(F.collect_set("movie_id").alias("items")))
     # emit ordered pairs i<j from each user's item set
     co = pairs.rdd.flatMap(
-        lambda row: ((min(a, b), max(a, b), row["user_id"]) for idx, a in enumerate(row["items"]) for b in row["items"][idx + 1:])
-    ).toDF(["i", "j", "user_id"]).distinct().groupBy("i", "j").count().filter(F.col("count") >= 5)
+        lambda row: ((min(a, b), max(a, b)) for idx, a in enumerate(row["items"]) for b in row["items"][idx + 1:])
+    ).toDF(["i", "j"]).groupBy("i", "j").count().filter(F.col("count") >= 5)
     top = co.withColumn("rk", F.row_number().over(
         Window.partitionBy("i").orderBy(F.col("count").desc(), F.col("j"))))
     top.filter(F.col("rk") <= 50).select("i", "j", "count").write.mode("overwrite").format("parquet").saveAsTable(f"{DB}.dws_cooccur")
