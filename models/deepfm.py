@@ -164,20 +164,25 @@ def main():
 
     model = Ranker(len(SPARSE) + len(CONT), list(sizes.values()), args.embed_dim, args.hidden, args.model)
     opt = torch.optim.Adam(model.parameters(), lr=args.lr)
-    history = []
+    history, best_auc, best_state = [], -1.0, None
     for ep in range(1, args.epochs + 1):
         t0 = time.time()
         loss = run_epoch(model, Xtr, ytr, opt, args, device)
         va = evaluate(model, Xva, yva, device)
         history.append({"epoch": ep, "train_loss": round(loss, 4), "val": va, "minutes": round((time.time() - t0) / 60, 1)})
-        print(json.dumps(history[-1]))
+        print(json.dumps(history[-1]), flush=True)
+        if va["AUC"] > best_auc:
+            best_auc = va["AUC"]
+            best_state = {k: v.detach().clone() for k, v in model.state_dict().items()}
 
+    model.load_state_dict(best_state)
     te = evaluate(model, Xte, yte, device)
     import os
     os.makedirs(args.out, exist_ok=True)
-    torch.save(model.state_dict(), f"{args.out}/{args.model}.pt")
+    torch.save(best_state, f"{args.out}/{args.model}.pt")
     with open(f"{args.out}/{args.model}_metrics.json", "w", encoding="utf-8") as fh:
-        json.dump({"args": vars(args), "history": history, "test": te}, fh, ensure_ascii=False, indent=2)
+        json.dump({"args": vars(args), "history": history, "test": te, "best_val_auc": best_auc},
+                  fh, ensure_ascii=False, indent=2)
     print("TEST", json.dumps(te))
 
 

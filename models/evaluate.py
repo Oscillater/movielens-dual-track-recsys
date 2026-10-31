@@ -71,13 +71,18 @@ class PopChannel(Channel):
     name = "pop"
 
     def __init__(self, items):
-        self.order = items.sort_values("n_ratings", ascending=False).movie_id.values
+        self.top500 = items.sort_values("n_ratings", ascending=False).movie_id.head(500).tolist()
 
     def topk(self, users, k, seen_map, valid):
         out = []
         for u in users:
             s = seen_map[u]
-            recs = [int(i) for i in self.order if int(i) not in s][:k]
+            recs = []
+            for i in self.top500:
+                if i not in s:
+                    recs.append(i)
+                    if len(recs) >= k:
+                        break
             out.append(recs)
         return out
 
