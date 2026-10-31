@@ -29,7 +29,22 @@ ap.add_argument("--nbits", type=int, default=8)
 args = ap.parse_args()
 
 os.makedirs(args.out, exist_ok=True)
-df = pd.read_csv(args.content)
+# movie_content.csv layout: movie_id,title,year,genres,top_tags — titles may
+# contain unquoted commas, so split from both ends and rejoin the middle
+rows = []
+with open(args.content, encoding="utf-8") as fh:
+    next(fh)
+    for line in fh:
+        p = line.rstrip("\n").split(",")
+        if len(p) < 5:
+            continue
+        rows.append({
+            "movie_id": int(p[0]),
+            "title": ",".join(p[1:-3]),
+            "genres": p[-2],
+            "top_tags": p[-1],
+        })
+df = pd.DataFrame(rows)
 df["text"] = (
     df.title.fillna("") + " | " + df.genres.fillna("").str.replace("|", " ", regex=False)
     + " | " + df.top_tags.fillna("")
