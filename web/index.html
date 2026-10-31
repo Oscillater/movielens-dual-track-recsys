@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>电影搜索与推荐系统 · Spark/Hive/SparkML + 生成式推荐</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Microsoft YaHei", sans-serif; background: #0f1420; color: #e8ecf4; }
+  header { padding: 18px 28px; background: #131a2b; border-bottom: 1px solid #232d45; display: flex; gap: 16px; align-items: center; }
+  header h1 { font-size: 18px; color: #7aa2ff; }
+  header input { flex: 0 1 420px; padding: 9px 14px; border-radius: 8px; border: 1px solid #2c3a5c; background: #0f1420; color: #e8ecf4; }
+  header button { padding: 9px 18px; border-radius: 8px; border: none; background: #3b6ef5; color: white; cursor: pointer; }
+  main { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; padding: 18px 28px; }
+  .card { background: #131a2b; border: 1px solid #232d45; border-radius: 12px; padding: 16px; }
+  .card h2 { font-size: 14px; color: #9fb3d9; margin-bottom: 10px; }
+  .item { display: flex; justify-content: space-between; padding: 9px 10px; border-radius: 8px; margin-bottom: 6px; background: #0f1420; }
+  .item .t { font-weight: 600; }
+  .item .meta { color: #8fa1c0; font-size: 12px; margin-top: 3px; }
+  .badge { display: inline-block; background: #233158; color: #9db8ff; border-radius: 6px; padding: 1px 7px; font-size: 11px; margin-left: 6px; }
+  .chart { width: 100%; height: 260px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { padding: 5px 8px; text-align: center; border-bottom: 1px solid #232d45; }
+  th { color: #9fb3d9; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎬 电影搜推系统</h1>
+  <input id="uid" value="123" size="6" title="用户ID">
+  <button onclick="loadRec()">换一批推荐</button>
+  <input id="q" placeholder="搜索电影 / 类型 / 标签，如：科幻、Nolan、1994">
+  <button onclick="loadSearch()">搜索</button>
+</header>
+<main>
+  <div>
+    <div class="card"><h2>推荐结果（多路召回 → 精排 → MMR 多样性重排）</h2><div id="recs"></div></div>
+    <div class="card" style="margin-top:18px"><h2>搜索结果</h2><div id="searches"></div></div>
+  </div>
+  <div>
+    <div class="card"><h2>召回通道贡献（当前请求）</h2><div id="chChart" class="chart"></div></div>
+    <div class="card" style="margin-top:18px"><h2>统一评测 · Recall@50 / NDCG@50</h2>
+      <div id="recallTable"></div></div>
+    <div class="card" style="margin-top:18px"><h2>精排 AUC（LR / FM / DeepFM）</h2><div id="aucChart" class="chart"></div></div>
+  </div>
+</main>
+<script>
+const chChart = echarts.init(document.getElementById('chChart'));
+const aucChart = echarts.init(document.getElementById('aucChart'));
+
+async function loadRec() {
+  const uid = document.getElementById('uid').value || 123;
+  const r = await fetch(`/recommend?user_id=${uid}&k=12`);
+  const d = await r.json();
+  document.getElementById('recs').innerHTML = d.items.map(it => `
+    <div class="item"><div><div class="t">${it.title} <span style="color:#8fa1c0;font-size:12px">${it.year||''}</span>
+      ${it.channels.map(c => `<span class="badge">${c}</span>`).join('')}</div>
+      <div class="meta">${(it.genres||[]).join(' / ')} · ${it.n_ratings||0} 人评分 · 均分 ${it.avg_rating||'-'} · 分数 ${it.score}</div>
+    </div></div>`).join('');
+  const counts = {};
+  d.items.forEach(it => it.channels.forEach(c => counts[c] = (counts[c]||0)+1));
+  chChart.setOption({
+    tooltip: {}, grid: {left: 80, right: 20, top: 10, bottom: 24},
+    xAxis: {type: 'value'}, yAxis: {type: 'category', data: Object.keys(counts)},
+    series: [{type: 'bar', data: Object.values(counts), itemStyle: {color: '#5b8cff'}}],
+  });
+}
+
+async function loadSearch() {
+  const q = document.getElementById('q').value;
+  if (!q) return;
+  const r = await fetch(`/search?q=${encodeURIComponent(q)}`);
+  const d = await r.json();
+  document.getElementById('searches').innerHTML = d.items.map(it => `
+    <div class="item"><div class="t">${it.title} <span style="color:#8fa1c0;font-size:12px">${it.year||''}</span></div>
+    <div class="meta">${(it.genres||[]).join('/')} · ${it.n_ratings||0} 评分</div></div>`).join('')
+    || '<div class="meta">无结果</div>';
+}
+
+async function loadMetrics() {
+  const r = await fetch('/metrics');
+  const m = await r.json();
+  if (m.recall) {
+    const rows = Object.entries(m.recall).map(([ch, v]) =>
+      `<tr><td>${ch}</td><td>${v['Recall@10']}</td><td>${v['Recall@50']}</td><td>${v['NDCG@10']}</td><td>${v['NDCG@50']}</td><td>${v['coverage']}</td></tr>`);
+    document.getElementById('recallTable').innerHTML =
+      `<table><tr><th>通道</th><th>R@10</th><th>R@50</th><td>N@10</th><td>N@50</th><th>覆盖</th></tr>${rows.join('')}</table>`;
+  }
+  const auc = [['LR', m.lr && m.lr.AUC], ['FM', m.fm && m.fm.AUC], ['DeepFM', m.deepfm && m.deepfm.AUC]].filter(x => x[1]);
+  if (auc.length) aucChart.setOption({
+    tooltip: {}, grid: {left: 40, right: 16, top: 16, bottom: 24},
+    xAxis: {type: 'category', data: auc.map(x => x[0])},
+    yAxis: {type: 'value', min: 0.6, max: 1},
+    series: [{type: 'bar', data: auc.map(x => x[1]), itemStyle: {color: '#39c5a3'}, label: {show: true, position: 'top'}}],
+  });
+}
+
+loadRec(); loadMetrics();
+</script>
+</body>
+</html>

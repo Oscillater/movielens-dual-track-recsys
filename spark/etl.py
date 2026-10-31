@@ -84,7 +84,7 @@ def stage_dwd(spark):
     dwd_movies = parts.select(
         "movie_id",
         "title",
-        F.regexp_extract(F.col("title"), r"\((\d{4})\)\s*$", 1).cast("int").alias("year"),
+        F.regexp_extract(F.col("title"), r'\((\d{4})\)\s*\\?"?\s*$', 1).cast("int").alias("year"),
         F.filter(
             F.split(F.col("genres_raw"), r"\|"),
             lambda g: g != "(no genres listed)",
