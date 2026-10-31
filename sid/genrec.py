@@ -151,7 +151,7 @@ def train(args, space, seqs, val_gt):
             pick = np.minimum(pick, len(users) - 1)
             batch, tgt = [], []
             for u in users[pick]:
-                s = seqs[u][-args.maxlen - 3:]
+                s = seqs[u][-args.maxlen - 1:]
                 x = s[:-1]
                 y = s[1:]
                 pad = args.maxlen - len(x)
@@ -199,7 +199,7 @@ def quick_val(model, seqs, gt, space, users_sample, beam, device):
 @torch.no_grad()
 def generate(model, hist_tokens, space, beam, topk, device="cpu"):
     model.eval()
-    ctx = hist_tokens[-(space and args_maxlen(model)):]
+    ctx = hist_tokens[-model.maxlen:]
     if ctx.size == 0:
         return []
     beams = [(0.0, ctx.tolist())]
