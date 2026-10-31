@@ -21,12 +21,12 @@
   },
   "als": {
     "n_users": 162541,
-    "Recall@10": 0.0,
-    "Recall@50": 0.0001,
-    "NDCG@10": 0.0,
-    "NDCG@50": 0.0,
-    "coverage": 0.0889,
-    "genre_diversity@50": 12.54,
-    "latency_ms_per_user": 2.99
+    "Recall@10": 0.0661,
+    "Recall@50": 0.2405,
+    "NDCG@10": 0.0313,
+    "NDCG@50": 0.0686,
+    "coverage": 0.1535,
+    "genre_diversity@50": 15.49,
+    "latency_ms_per_user": 2.85
   }
 }
