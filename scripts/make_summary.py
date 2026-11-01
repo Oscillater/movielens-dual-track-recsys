@@ -17,6 +17,16 @@ if os.path.exists(rec_path):
               "| 通道 | Recall@10 | Recall@50 | NDCG@10 | NDCG@50 | 覆盖率 | 类型多样性@50 | 延迟ms/人 |",
               "|---|---|---|---|---|---|---|---|"]
     order = ["pop", "itemcf", "als", "sasrec", "genrec", "fusion"]
+    gen_p = os.path.join(ROOT, "artifacts", "genrec", "genrec_test_metrics.json")
+    if "genrec" not in rec and os.path.exists(gen_p):
+        with open(gen_p, encoding="utf-8") as fh:
+            g = json.load(fh)
+        rec["genrec"] = {
+            "Recall@10": g["Recall@10"], "Recall@50": g["Recall@50"],
+            "NDCG@10": g["NDCG@10"], "NDCG@50": g["NDCG@50"],
+            "coverage": "-", "genre_diversity@50": "-",
+            "latency_ms_per_user": g["latency_ms_per_user"],
+        }
     for ch in order + [c for c in rec if c not in order]:
         if ch not in rec:
             continue

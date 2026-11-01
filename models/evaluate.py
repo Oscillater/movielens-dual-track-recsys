@@ -191,7 +191,7 @@ class SASRecChannel(Channel):
         self.item_ids = ids
         state = torch.load(os.path.join(sasrec_dir, "sasrec.pt"), map_location="cpu")
         d = emb.shape[1]
-        self.model = SASRec(state["item_emb.weight"].shape[0], d=d)
+        self.model = SASRec(state["item_emb.weight"].shape[0] - 1, d=d)
         self.model.load_state_dict(state)
         self.model.eval()
         self.torch.set_num_threads(max(1, os.cpu_count() - 2))
