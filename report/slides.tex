@@ -140,8 +140,7 @@
   \end{tikzpicture}
 
   \vspace{8pt}\small
-  生成式推荐为独立支线：电影内容首先量化为语义 ID，再由自回归模型直接生成推荐序列（TIGER / OneRec 范式）。\\
-  全部模型采用同一份数据划分与同一套指标进行评估；各组件均开展消融实验，以量化其对整体性能的贡献。
+  生成式推荐为独立支线：电影内容首先量化为语义 ID，再由自回归模型直接生成推荐序列（TIGER / OneRec 范式）。全部模型采用同一份数据划分与同一套指标进行评估；各组件均开展消融实验，以量化其对整体性能的贡献。
 \end{frame}
 
 % =====================================================
@@ -251,11 +250,14 @@
     \column{0.46\textwidth}
     \small
     \textbf{在线服务}\\[2pt]
-    FastAPI 服务中，\mono{/recommend} 接口串联召回、融合、精排与 MMR，端到端延迟约 0.9 秒；\mono{/search} 支持中文类型同义词映射（如"科幻"映射至 Sci-Fi）；推荐结果附带通道徽章，实现推荐理由可解释。网页支持深链参数，可直达指定演示状态。
+    FastAPI 服务中，\mono{/recommend} 接口串联召回、融合、精排与 MMR；\mono{/search} 支持中文类型同义词映射（如"科幻"映射至 Sci-Fi）；推荐结果附带通道徽章，实现推荐理由可解释。网页支持深链参数，可直达指定演示状态。
   \end{columns}
-  \vspace{8pt}
-  \centering
-  \includegraphics[width=0.82\linewidth]{web_demo_user1.png}
+  \vspace{10pt}
+  \begin{columns}[T]
+    \column{0.31\textwidth}\cellbox{14mm}{\centering\vspace{2pt}\stat{162{,}541}{用户全量参与评测}}
+    \column{0.31\textwidth}\cellbox{14mm}{\centering\vspace{2pt}\stat{62{,}423}{候选电影全量排序}}
+    \column{0.31\textwidth}\cellbox{14mm}{\centering\vspace{2pt}\stat{$\sim$0.9s}{/recommend 端到端延迟}}
+  \end{columns}
 \end{frame}
 
 % =====================================================
