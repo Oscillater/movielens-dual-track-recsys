@@ -45,6 +45,7 @@ def workload(sample, movies):
 results = []
 # warmup pass: absorbs JVM/codegen/shuffle-service initialisation
 workload(ratings.sample(fraction=0.1, seed=7), movies)
+spark.sparkContext.setJobDescription("scaling-timed")
 
 for frac in [0.25, 0.5, 1.0]:
     sample = ratings.sample(fraction=frac, seed=42)
