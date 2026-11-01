@@ -190,42 +190,38 @@ def quick_val(model, seqs, gt, space, users_sample, beam, device):
     users = users[:users_sample]
     hits = 0
     for u in users:
-        recs = generate(model, seqs[u], space, beam, 10)
+        recs = generate(model, seqs[u], space, beam, 10, exclude=set(int(i) for i in seqs[u]))
         if gt[u] in recs:
             hits += 1
     return hits / max(1, len(users))
 
 
 @torch.no_grad()
-def generate(model, hist_tokens, space, beam, topk, device="cpu"):
+def generate(model, hist_tokens, space, beam, topk, device="cpu", exclude=None):
+    """Constrained beam search: every beam carries its trie node and advances
+    token-by-token; paths completing at a '#' terminal become candidates.
+    TIGER-style: top-K items = top-K distinct completed SIDs."""
     model.eval()
-    ctx = hist_tokens[-model.maxlen:]
-    if ctx.size == 0:
+    ctx = hist_tokens[-model.maxlen:].tolist()
+    if not ctx:
         return []
-    beams = [(0.0, ctx.tolist())]
+    beams = [(0.0, [], space.trie)]        # (cum_logprob, generated_tokens, trie_node)
     done = []
-    while beams and len(done) < topk * 3:
+    for _ in range(4):                     # SID depth is 3 or 4 tokens
+        if not beams:
+            break
         cand = []
-        for score, toks in beams:
-            node = space.trie
-            for t in toks[-4:]:
-                if t in node:
-                    node = node[t]
-                else:
-                    node = None
-                    break
-            if node is None:
-                continue
-            if "#" in node:
-                done.append((score, toks[-4:]))
-                continue
-            x = torch.tensor([toks[-(model.maxlen):]], dtype=torch.long)
-            logits = model(x)[0, -1]
-            logp = torch.log_softmax(logits, dim=-1)
-            top = torch.topk(logp, beam * 2).indices.tolist()
-            for t in top:
+        for score, toks, node in beams:
+            x = torch.tensor([(ctx + toks)[-model.maxlen:]], dtype=torch.long)
+            logp = torch.log_softmax(model(x)[0, -1], dim=-1)
+            for t in torch.topk(logp, beam * 3).indices.tolist():
                 if t in node and t != space.PAD:
-                    cand.append((score + float(logp[t]), toks + [t]))
+                    child = node[t]
+                    ns = score + float(logp[t])
+                    if "#" in child:
+                        done.append((ns, toks + [t]))
+                    else:
+                        cand.append((ns, toks + [t], child))
         if not cand:
             break
         cand.sort(key=lambda p: -p[0])
@@ -238,7 +234,7 @@ def generate(model, hist_tokens, space, beam, topk, device="cpu"):
             continue
         seen_sids.add(sid)
         mid = space.sid2item.get(sid)
-        if mid is not None:
+        if mid is not None and (exclude is None or mid not in exclude):
             out.append(mid)
         if len(out) >= topk:
             break
@@ -261,7 +257,8 @@ def evaluate_full(args, space, seqs, gt):
     t0 = time.time()
     recs_map = {}
     for u in users:
-        recs = generate(model, seqs[u], space, beam=args.beam, topk=50)
+        recs = generate(model, seqs[u], space, beam=args.beam, topk=50,
+                        exclude=set(int(i) for i in seqs[u]))
         recs_map[u] = recs
         tgt = gt[u]
         if tgt in recs[:10]:
