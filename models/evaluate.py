@@ -155,6 +155,30 @@ class ALSChannel(Channel):
         return out
 
 
+class FusionChannel(Channel):
+    """Reciprocal-rank fusion of constituent channels (multi-recall funnel)."""
+    name = "fusion"
+
+    def __init__(self, subs):
+        self.subs = subs
+
+    def topk(self, users, k, seen_map, valid):
+        lists = [s.topk(users, 100, seen_map, valid) for s in self.subs]
+        t0 = time.perf_counter()
+        out = []
+        for idx, u in enumerate(users):
+            rrf = {}
+            for lst in lists:
+                for rank, mid in enumerate(lst[idx]):
+                    rrf[mid] = rrf.get(mid, 0.0) + 1.0 / (60.0 + rank + 1)
+            for i in seen_map[u]:
+                rrf.pop(i, None)
+            top = sorted(rrf.items(), key=lambda x: -x[1])[:k]
+            out.append([m for m, _ in top])
+        self.latency = (time.perf_counter() - t0) / len(users)
+        return out
+
+
 class SASRecChannel(Channel):
     name = "sasrec"
 
@@ -272,6 +296,10 @@ def main():
             recs = ch.topk(users, args.k, seen_map, valid)
         elif name == "sasrec":
             ch = SASRecChannel(args.data, args.sasrec)
+            recs = ch.topk(users, args.k, seen_map, valid)
+        elif name == "fusion":
+            ch = FusionChannel([PopChannel(items), ItemCFChannel(args.data, items),
+                                ALSChannel(args.data, valid)])
             recs = ch.topk(users, args.k, seen_map, valid)
         elif name == "genrec":
             recs = genrec_placeholder(users, args.k, seen_map, valid)
