@@ -1,0 +1,434 @@
+% 基于大数据架构的电影搜索与推荐系统 —— 课程汇报slides
+% 编译: xelatex -enable-installer -interaction=nonstopmode slides.tex （跑两遍出目录）
+\documentclass[aspectratio=169,11pt]{ctexbeamer}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{colortbl}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning}
+\graphicspath{{../experiments/screenshots/}}
+
+\definecolor{primary}{HTML}{1F3A93}
+\definecolor{accent}{HTML}{3B6EF5}
+\definecolor{goodgreen}{HTML}{1E8E5A}
+\usecolortheme[named=primary]{structure}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{caption}{\raggedright\small\insertcaption\par}
+\setbeamerfont{frametitle}{size=\large,series=\bfseries}
+\setbeamertemplate{frametitle}{\vspace{6pt}\insertframetitle\vspace{-4pt}}
+\setbeamertemplate{footline}{%
+  \hfill{\color{gray}\small\insertframenumber/\inserttotalframenumber}\hspace{10pt}\vspace{4pt}}
+\setbeamertemplate{itemize items}[circle]
+\setbeamertemplate{enumerate items}[default]
+\setlength{\leftmargini}{1.2em}
+
+\newcommand{\good}[1]{\textcolor{goodgreen}{\textbf{#1}}}
+\newcommand{\hl}[1]{\textcolor{accent}{\textbf{#1}}}
+
+\title{基于大数据架构的电影搜索与推荐系统}
+\subtitle{MovieLens 25M 上的判别式漏斗 + 生成式推荐全链路}
+\author{（姓名 · 学号）}
+\date{2026 年 11 月}
+
+\begin{document}
+
+% ---------- 封面 ----------
+\begin{frame}
+  \titlepage
+  \centering\small\color{gray}
+  Hadoop 3.3.6 · Hive 4.0.1 · Spark 3.5.9 (YARN) · FastAPI · PyTorch (CPU)
+\end{frame}
+
+% ---------- 目录 ----------
+\begin{frame}{目录}
+  \tableofcontents
+\end{frame}
+
+% =====================================================
+\section{项目介绍}
+
+\begin{frame}{项目背景：课程要求 $\to$ 系统设计}
+  \textbf{一句话定位}：在自建 Hadoop 集群上，对 2500 万条评分做完整搜推链路——多路召回 $\to$ 精排 $\to$ 重排 $\to$ 在线服务，并实现生成式推荐分支。
+
+  \vspace{6pt}
+  \begin{columns}[T]
+    \column{0.55\textwidth}
+    \textbf{课程知识点 $\to$ 对应实现}
+    \begin{itemize}
+      \item 大数据架构：3 节点 Hadoop/YARN 集群 + Hive 分层数仓
+      \item 协同过滤：ALS（显式+隐式）+ ItemCF
+      \item 分类：LR / FM / DeepFM CTR 精排
+      \item 回归：GBT 热度预测（时间切分防泄漏）
+      \item 聚类/量化：RQ-KMeans 语义 ID
+      \item 加分项：自建 Linux 环境、SASRec/生成式推荐、faiss/ECharts 等课程外技术
+    \end{itemize}
+    \column{0.42\textwidth}
+    \textbf{数据与约束}
+    \begin{itemize}
+      \item MovieLens 25M：25{,}000{,}095 条评分、162{,}541 用户、62{,}423 部电影
+      \item 无 GPU（Iris Xe 核显）$\to$ 全部模型 CPU 训练
+      \item 单机 16GB + 8GB 虚拟机，全程内存/磁盘监控
+    \end{itemize}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{系统总览：一条数据流水线}
+  \centering
+  \begin{tikzpicture}[node distance=4mm and 5mm,
+      box/.style={draw=primary,fill=primary!8,rounded corners=2pt,inner sep=5pt,
+                  font=\scriptsize\bfseries,align=center,minimum height=15mm},
+      arr/.style={-{Stealth[length=2.5mm]},thick,primary}]
+    \node[box] (data) {MovieLens 25M\\2500万评分};
+    \node[box,right=of data] (etl) {Spark ETL\\Hive ODS/DWD/DWS\\leave-last-out切分};
+    \node[box,right=of etl] (train) {模型训练\\ALS/ItemCF/SASRec\\DeepFM/GBT/SID};
+    \node[box,below=9mm of train] (eval) {统一评测\\全量排序+消融\\RRF融合};
+    \node[box,left=of eval] (serve) {在线服务\\FastAPI多路召回\\MMR重排};
+    \node[box,left=of serve] (web) {Web 前端\\ECharts 看板};
+    \draw[arr] (data)--(etl); \draw[arr] (etl)--(train);
+    \draw[arr] (train)--(eval);
+    \draw[arr] (eval)--(serve); \draw[arr] (serve)--(web);
+  \end{tikzpicture}
+
+  \vspace{8pt}
+  \small
+  \textbf{生成式分支}：电影内容 $\to$ RQ-KMeans 语义 ID $\to$ GenRec 自回归模型直接\emph{生成}推荐（TIGER/OneRec 范式）\\
+  所有模型以\hl{同一份切分、同一套指标}考试；每个组件做消融实验回答“为什么需要它”
+\end{frame}
+
+% =====================================================
+\section{设计实现}
+
+\begin{frame}{自建 Linux 大数据集群}
+  \begin{columns}[T]
+    \column{0.52\textwidth}
+    \small VMware 虚拟机内以 Docker 编排 3 节点集群：
+    \begin{itemize}
+      \item \textbf{master}：NameNode / ResourceManager / Spark 提交端
+      \item \textbf{worker1 / worker2}：DataNode / NodeManager
+      \item Hive 4.0.1（Metastore + HiveServer2，MySQL 8 后端）
+      \item HBase 2.6.1（ZooKeeper）、Spark 3.5.9 on YARN
+    \end{itemize}
+    \vspace{4pt}
+    \footnotesize 关键优化：Spark 依赖包打包为 \texttt{spark.yarn.archive} 上传 HDFS，作业启动分发从分钟级降到秒级。
+    \column{0.44\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{yarn_running_app.png}
+    \captionof{figure}{YARN 集群：1 个 RUNNING + 20 个历史应用}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Hive 分层数仓与统一数据切分}
+  \small
+  \begin{itemize}
+    \item \textbf{ODS}：ratings / movies / tags 原样文本表（不解析，可重放）
+    \item \textbf{DWD}：Parquet 明细；正则解析标题年份；窗口函数 leave-last-out——每用户最后 2 条为 val/test，其余训练
+    \item \textbf{DWS}：用户/电影统计、共现矩阵、行为序列（\texttt{sort\_array(collect\_list)} 保时序）——\hl{只用训练段计算，杜绝标签泄漏}
+  \end{itemize}
+  \vspace{4pt}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+    \footnotesize
+    \textbf{校验}：25{,}000{,}095 条评分 $\to$ train/val/test 切分行数严格对账（val 与 test 各 162{,}541 行，与用户数一致）。
+    \column{0.48\textwidth}
+    \footnotesize
+    \textbf{踩坑}：Hive 4 Metastore Thrift 与 Spark 3.5 不兼容（\texttt{Invalid method name: 'get\_table'}）$\to$ 采用目录解耦：Spark 内嵌 Derby 为准，Hive 建外部表镜像同一数据，两边都能 SQL 查询。
+  \end{columns}
+\end{frame}
+
+\begin{frame}{判别式漏斗 · 多路召回}
+  \small 四个互补通道并行取回，各有分工：
+  \begin{itemize}
+    \item \textbf{热门}：头部兜底 + 新用户冷启动（0.06ms/人，预过滤 Top-500）
+    \item \textbf{ItemCF}：共现 + 贡献限流（限制热门物品贡献次数），4.5ms/人
+    \item \textbf{ALS 隐式}：$\alpha{=}40$ 全量行为当正样本。教训：显式 ALS（只学高分）R@50 仅 0.0001——它只记住“大家都爱的经典”，学不会“这个人会点开什么”
+    \item \textbf{SASRec}：自注意力序列模型（d64 / 2 层 / maxlen 50），物品嵌入向量全量排序，CPU 采样训练
+  \end{itemize}
+  \vspace{5pt}
+  \textbf{RRF 融合}：$\mathrm{score}(i)=\sum_{c}\frac{1}{60+\mathrm{rank}_c(i)}$，各通道 Top-100 去重合并——不依赖分数可比性，只融合排序。
+
+  \vspace{5pt}
+  \footnotesize 消融通道（\texttt{fusion\_no\_als} / \texttt{fusion\_no\_itemcf}）随总表一起评测，量化每路召回的贡献。
+\end{frame}
+
+\begin{frame}{判别式漏斗 · 精排与重排}
+  \begin{columns}[T]
+    \column{0.55\textwidth}
+    \small
+    \textbf{CTR 精排（Spark 样本管线 + PyTorch）}
+    \begin{itemize}
+      \item 标签：评分 $\ge 4$；8 个特征：用户/物品统计、年份、时间间隔、类型偏好匹配度等
+      \item LR / FM / DeepFM 共用同一套特征与样本，只有模型结构不同——公平对比
+      \item 发现过拟合（test AUC 0.7319）$\to$ 改为\hl{best-val 检查点选择} $\to$ 0.7552
+    \end{itemize}
+    \column{0.41\textwidth}
+    \small
+    \textbf{MMR 多样性重排}
+    \begin{itemize}
+      \item $\lambda{=}0.6$ 平衡相关性与类型多样性
+      \item 服务端逐条贪心选择，保证首页不全是同系列
+    \end{itemize}
+  \end{columns}
+  \vspace{6pt}
+  \small \textbf{回归模块}：GBT 预测电影 2018 年后热度（特征只取 2015--2017 信息，时间切分防泄漏），并对比 LinearRegression——见实验部分。
+\end{frame}
+
+\begin{frame}{生成式推荐：语义 ID + 自回归生成（TIGER/OneRec 范式）}
+  \begin{columns}[T]
+    \column{0.52\textwidth}
+    \small
+    \textbf{RQ-KMeans 语义 ID（faiss ResidualQuantizer）}
+    \begin{itemize}
+      \item 输入：标题+类型+高频标签 $\to$ MiniLM 句向量 $\to$ PCA 32 维
+      \item 3 层 × 256 码字，第 4 层兜底碰撞
+      \item 质量：每层码字使用率 \good{100\%}（零坍缩），整体碰撞率仅 \good{3.35\%}
+    \end{itemize}
+    \column{0.44\textwidth}
+    \small
+    \textbf{GenRec 生成式模型}
+    \begin{itemize}
+      \item decoder-only Transformer（d128 / 4 层），把“推荐”变成“生成 SID 序列”
+      \item Trie 约束束搜索：只在合法 SID 前缀上展开，天然排除已看物品
+      \item 150ms/人（CPU 束搜索，含全量评估）
+    \end{itemize}
+  \end{columns}
+  \vspace{5pt}
+  \footnotesize 意义：验证了“生成式推荐”这条工业新范式在 CPU 集群上端到端跑通；绝对指标不及判别式通道（实验部分如实报告）。
+\end{frame}
+
+\begin{frame}{统一评测协议与在线系统}
+  \begin{columns}[T]
+    \column{0.5\textwidth}
+    \small
+    \textbf{评测公平性三原则}
+    \begin{itemize}
+      \item 同一份 leave-last-out 测试集（162{,}541 人，全量）
+      \item 全量物品排序 + \hl{排除已看}（不做负采样下采样）
+      \item 统一指标：Recall@K / NDCG@K / 覆盖率 / 类型多样性 / 延迟
+    \end{itemize}
+    \column{0.46\textwidth}
+    \small
+    \textbf{FastAPI 在线服务}
+    \begin{itemize}
+      \item /recommend：多路召回 $\to$ RRF $\to$ 精排 $\to$ MMR，端到端 $\sim$0.9s
+      \item /search：标题/类型/标签检索 + 中文类型同义词映射
+      \item /history /metrics /health；结果带\hl{通道徽章}（可解释推荐）
+      \item 网页支持深链参数直达任意演示状态
+    \end{itemize}
+  \end{columns}
+  \vspace{6pt}
+  \centering
+  \includegraphics[width=0.8\linewidth]{web_demo_user1.png}
+\end{frame}
+
+% =====================================================
+\section{实验结果}
+
+\begin{frame}{召回通道统一评测总表（162{,}541 测试用户，全量排序、排除已看）}
+  \centering\scriptsize
+  \begin{tabular}{lccccccc}
+    \toprule
+    通道 & R@10 & R@50 & N@10 & N@50 & 覆盖率 & 多样性@50 & 延迟ms/人 \\
+    \midrule
+    热门 & 0.0441 & 0.1290 & 0.0220 & 0.0402 & 0.0085 & 16.57 & 0.06 \\
+    ItemCF & 0.0672 & 0.2101 & 0.0330 & 0.0637 & 0.0624 & 16.14 & 4.49 \\
+    ALS(隐式) & 0.0661 & \textbf{0.2405} & 0.0313 & 0.0686 & \textbf{0.1535} & 15.49 & 2.85 \\
+    SASRec (v2) & 0.0389 & 0.1513 & 0.0183 & 0.0422 & 0.1070 & 15.92 & 1.32 \\
+    GenRec(生成式) & 0.0040 & 0.0046 & 0.0018 & 0.0020 & -- & -- & 150.2 \\
+    \rowcolor{accent!12}
+    多路融合(RRF) & \textbf{0.0739} & 0.2239 & \textbf{0.0371} & \textbf{0.0693} & 0.1034 & 16.25 & 0.07 \\
+    \quad消融：去ALS & 0.0597 & 0.1777 & 0.0308 & 0.0559 & 0.0476 & 16.31 & 0.06 \\
+    \quad消融：去ItemCF & 0.0682 & 0.2103 & 0.0343 & 0.0648 & 0.1356 & 16.10 & 0.30 \\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{6pt}\small
+  SASRec v2 = 续训 10 轮后的最优检查点（R@50 较 v1 \good{+9.7\%}）；多样性@50 为平均覆盖的类型数（满分约 19）。
+\end{frame}
+
+\begin{frame}{关键发现一：消融实验回答“为什么需要多路召回”}
+  \begin{columns}[T]
+    \column{0.55\textwidth}
+    \small
+    \begin{itemize}
+      \item \textbf{去掉 ALS}：R@50 从 0.2239 掉到 0.1777（\good{$-$20.6\%}），覆盖率 0.1034$\to$0.0476 近乎腰斩——ALS 是融合的\hl{长尾主力}
+      \item \textbf{去掉 ItemCF}：R@50 只掉 6.1\%——贡献真实但次要
+      \item 单看 R@50 / 覆盖率：ALS 独走最优
+    \end{itemize}
+    \column{0.41\textwidth}
+    \small
+    \textbf{但融合的价值在“准”}：R@10 与 NDCG@10 全场最高\\
+    \good{漏斗各取所长}：召回层要广（ALS 覆盖长尾），进精排的头部要准（RRF 融合排序）
+  \end{columns}
+  \vspace{10pt}
+  \centering\footnotesize
+  \begin{tabular}{lccc}
+    \toprule
+     & R@10 & NDCG@10 & R@50 \\
+    \midrule
+    ALS 单通道 & 0.0661 & 0.0313 & \textbf{0.2405} \\
+    多路融合(RRF) & \textbf{0.0739} & \textbf{0.0371} & 0.2239 \\
+    \bottomrule
+  \end{tabular}
+\end{frame}
+
+\begin{frame}{关键发现二：精排与回归的诚实结论}
+  \begin{columns}[T]
+    \column{0.5\textwidth}
+    \small
+    \textbf{CTR 精排（同一特征管线）}
+    \begin{itemize}
+      \item LR 0.7573 / FM 0.7463 / DeepFM 0.7552（Test AUC）
+      \item 诚实结论：\hl{DeepFM 未超 LR}——8 个手工特征下深度结构没有可学的交叉模式；特征质量决定上限
+      \item 过拟合诊断与 best-val 选点：0.7319 $\to$ 0.7552
+    \end{itemize}
+    \column{0.46\textwidth}
+    \small
+    \textbf{热度回归（时间切分防泄漏）}
+    \begin{itemize}
+      \item GBT：R² \good{0.8917}，RMSE 0.5175
+      \item LinearRegression：R² 0.6551，RMSE 0.9236
+      \item 非线性模型在时间外推任务上优势显著
+    \end{itemize}
+  \end{columns}
+  \vspace{8pt}
+  \small 这两个“反直觉/诚实”的结论本身就是消融思维的体现：先归因（特征 vs 模型容量），再下结论。
+\end{frame}
+
+\begin{frame}{扩展性曲线与生成式通道}
+  \begin{columns}[T]
+    \column{0.46\textwidth}
+    \small
+    \textbf{Spark 数据量扩展性（固定工作负载，含预热）}
+    \centering\footnotesize
+    \begin{tabular}{lc}
+      \toprule
+      数据量 & 运行时间(s) \\
+      \midrule
+      25\% & 15.1 \\
+      50\% & 16.2 \\
+      100\% & 23.6 \\
+      \bottomrule
+    \end{tabular}
+
+    \vspace{4pt}\footnotesize
+    25\%$\to$50\% 几乎无增长（并行度余量），50\%$\to$100\% 近线性——瓶颈在数据 shuffle 而非固定开销，符合集群扩容预期。
+    \column{0.5\textwidth}
+    \small
+    \textbf{GenRec（生成式）如实报告}
+    \begin{itemize}
+      \item R@10 = 0.004：范式跑通，绝对效果不及判别式
+      \item 归因：CPU 算力限制训练轮数与序列长度；SID 量化损失；无物品冷启动特征加持
+      \item 价值：trie 约束束搜索、语义 ID 管线、评估协议均可复用，上 GPU 后可继续训练
+    \end{itemize}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{系统实况：搜索与推荐一页}
+  \centering
+  \includegraphics[height=0.86\textheight]{web_demo_full.png}
+\end{frame}
+
+\begin{frame}{系统实况：集群作业}
+  \begin{columns}[T]
+    \column{0.49\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{spark_jobs.png}
+    \captionof{figure}{Spark UI：ALS 训练作业运行中（259 个任务）}
+    \column{0.49\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{spark_executors.png}
+    \captionof{figure}{Executors：driver + 2 执行器，shuffle 2.6GiB}
+  \end{columns}
+\end{frame}
+
+% =====================================================
+\section{项目总结}
+
+\begin{frame}{技术亮点与工程教训}
+  \begin{columns}[T]
+    \column{0.52\textwidth}
+    \small
+    \textbf{亮点（对照加分项）}
+    \begin{itemize}
+      \item \hl{自建 Linux 大数据环境}：Docker 3 节点 Hadoop/Hive/HBase/Spark，调通 Hive 4 + Spark 3.5 兼容问题
+      \item \hl{复杂算法}：SASRec、DeepFM、RQ-KMeans 语义 ID、Trie 约束束搜索的生成式推荐
+      \item \hl{课程外技术}：faiss、ECharts、FastAPI、增量评测框架、spark.yarn.archive 优化
+      \item 全链路消融：每个组件都有“拆掉掉多少分”的量化答案
+    \end{itemize}
+    \column{0.44\textwidth}
+    \small
+    \textbf{工程教训}
+    \begin{itemize}
+      \item 显式 ALS 学不会点击意图 $\to$ 隐式反馈建模
+      \item 深度模型默认会过拟合 $\to$ best-val 选点
+      \item 元数据目录解耦：版本不兼容时保数据可查
+      \item 评测结果文件做增量合并，单通道重跑不覆盖
+    \end{itemize}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{不足与展望}
+  \small
+  \begin{itemize}
+    \item \textbf{生成式效果}：GenRec 绝对指标低——受限于 CPU 算力；后续可在 GPU 上扩训练轮数与序列长度，并引入物品内容特征
+    \item \textbf{精排特征}：DeepFM 未超 LR 说明特征工程是瓶颈；可引入行为序列特征（DIN 式 target attention）
+    \item \textbf{实时链路}：当前为离线批训练 + 在线服务；可扩展 Flink 流式特征与定时增量刷新看板
+    \item \textbf{在线评估}：有离线消融、无真实 A/B；可做基于重放（replay）的偏置校正评估
+  \end{itemize}
+  \vspace{8pt}
+  \centering
+  \textcolor{gray}{—— 总量：约 30 个源文件 / 5000+ 行代码，覆盖 数据 $\to$ 模型 $\to$ 评测 $\to$ 服务 四层 ——}
+\end{frame}
+
+% =====================================================
+\section{成员分工}
+
+\begin{frame}{成员分工}
+  \small 本项目为\hl{独立完成}，全部工作量由本人一人承担：
+  \vspace{4pt}
+  \centering\footnotesize
+  \begin{tabular}{ll}
+    \toprule
+    模块 & 完成人 \\
+    \midrule
+    集群环境搭建（Hadoop/Hive/HBase/Spark on YARN） & 本人 \\
+    数据管道（ETL / 数仓分层 / 特征工程） & 本人 \\
+    模型（ALS/ItemCF/SASRec/DeepFM/GBT/语义ID/GenRec） & 本人 \\
+    统一评测与消融实验框架 & 本人 \\
+    在线服务与前端（FastAPI / ECharts） & 本人 \\
+    实验报告与演示文稿 & 本人 \\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{8pt}\footnotesize\color{gray}
+  说明：开发过程使用 AI 编程助手辅助调试与代码生成，系统设计决策、实验结论与全部内容经本人验证。
+\end{frame}
+
+% =====================================================
+\section{资源链接}
+
+\begin{frame}{资源链接与运行方式}
+  \small
+  \textbf{在线资源}
+  \begin{itemize}
+    \item 代码仓库：\hl{（GitHub/Gitee 链接，提交前填入）}
+    \item 数据集 MovieLens 25M：\texttt{https://grouplens.org/datasets/movielens/25m/}
+    \item 生成式推荐参考：TIGER (Google) / OneRec (快手)；\texttt{github.com/LSH2003/MiniOneRec}
+  \end{itemize}
+  \vspace{4pt}
+  \textbf{本地复现路径（代码仓库内）}
+  \begin{itemize}
+    \item 数仓：\texttt{spark/etl.py}（ods/dwd/dws）$\to$ \texttt{als.py} $\to$ \texttt{samples.py} $\to$ \texttt{gbt.py} $\to$ \texttt{export.py}
+    \item 模型与评测：\texttt{models/}（sasrec / deepfm / evaluate）、\texttt{sid/}（build\_sid / genrec）
+    \item 服务：\texttt{.venv/Scripts/python -m uvicorn serving.app:app -{}-port 8000}，浏览器打开即用
+    \item 实验数据：\texttt{experiments/summary.md}（总表）、\texttt{experiments/screenshots/}（演示截图）
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \centering\vspace{30mm}
+  {\Huge\hl{谢谢观看}}\\[10pt]
+  {\large 欢迎提问}
+\end{frame}
+
+\end{document}
