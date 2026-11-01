@@ -145,6 +145,7 @@ def main():
     ap.add_argument("--dropout", type=float, default=0.2)
     ap.add_argument("--negs", type=int, default=1024)
     ap.add_argument("--eval-users", type=int, default=50_000)
+    ap.add_argument("--init-from", default=None, help="continue training from a checkpoint")
     ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
 
@@ -174,6 +175,9 @@ def main():
     item_ids_t = torch.tensor(item_ids, dtype=torch.long)
 
     model = SASRec(args.n_items, args.d, args.layers, args.heads, args.maxlen, args.dropout)
+    if args.init_from and os.path.exists(args.init_from):
+        model.load_state_dict(torch.load(args.init_from, map_location="cpu"))
+        print("resumed from", args.init_from)
     opt = torch.optim.Adam(model.parameters(), lr=args.lr)
 
     os.makedirs(args.out, exist_ok=True)
