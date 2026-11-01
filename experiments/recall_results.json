@@ -47,6 +47,26 @@
     "NDCG@50": 0.0693,
     "coverage": 0.1034,
     "genre_diversity@50": 16.25,
-    "latency_ms_per_user": 0.52
+    "latency_ms_per_user": 0.07
+  },
+  "fusion_no_als": {
+    "n_users": 162541,
+    "Recall@10": 0.0597,
+    "Recall@50": 0.1777,
+    "NDCG@10": 0.0308,
+    "NDCG@50": 0.0559,
+    "coverage": 0.0476,
+    "genre_diversity@50": 16.31,
+    "latency_ms_per_user": 0.06
+  },
+  "fusion_no_itemcf": {
+    "n_users": 162541,
+    "Recall@10": 0.0682,
+    "Recall@50": 0.2103,
+    "NDCG@10": 0.0343,
+    "NDCG@50": 0.0648,
+    "coverage": 0.1356,
+    "genre_diversity@50": 16.1,
+    "latency_ms_per_user": 0.3
   }
 }
