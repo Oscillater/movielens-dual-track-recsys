@@ -12,7 +12,8 @@ if os.path.exists(rec_path):
     with open(rec_path, encoding="utf-8") as fh:
         rec = json.load(fh)
     zh = {"pop": "热门", "itemcf": "ItemCF", "als": "ALS(隐式)", "sasrec": "SASRec",
-          "genrec": "GenRec(生成式)", "fusion": "多路融合(RRF)"}
+          "genrec": "GenRec(生成式)", "fusion": "多路融合(RRF)",
+          "fusion_no_als": "消融:融合-去ALS", "fusion_no_itemcf": "消融:融合-去ItemCF"}
     lines += ["## 召回通道统一评测（测试集 = 每用户 leave-last-out，排除已看）", "",
               "| 通道 | Recall@10 | Recall@50 | NDCG@10 | NDCG@50 | 覆盖率 | 类型多样性@50 | 延迟ms/人 |",
               "|---|---|---|---|---|---|---|---|"]
