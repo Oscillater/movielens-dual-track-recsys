@@ -38,7 +38,10 @@ def parse_movies(path):
         for r in csv.reader(fh, escapechar="\\"):
             if len(r) < 4 or r[0] == "movie_id":
                 continue
-            title = r[1]
+            title = r[1].strip()
+            # Spark CSV quoting leaves symmetric wrapping quotes on comma-titles
+            if len(title) >= 2 and title[0] == '"' and title[-1] == '"':
+                title = title[1:-1].strip()
             try:
                 mid = int(r[0])
             except ValueError:
@@ -99,10 +102,10 @@ def load_state():
         st["als_i_ids"] = itf.movie_id.values.astype(int)
         st["als_I"] = itf[[c for c in itf.columns if c != "movie_id"]].values
 
-    # SASRec embeddings (final-layer item vectors, full-rank recall)
-    emb_path = os.path.join(ROOT, "artifacts", "sasrec", "item_emb.npy")
+    # SASRec embeddings (final-layer item vectors, full-rank recall) — v2 = 续训最优检查点
+    emb_path = os.path.join(ROOT, "artifacts", "sasrec_v2", "item_emb.npy")
     if os.path.exists(emb_path):
-        st["sasrec_ids"] = np.loadtxt(os.path.join(ROOT, "artifacts", "sasrec", "item_ids.txt"), dtype=np.int64)
+        st["sasrec_ids"] = np.loadtxt(os.path.join(ROOT, "artifacts", "sasrec_v2", "item_ids.txt"), dtype=np.int64)
         st["sasrec_emb"] = np.load(emb_path)
 
     st["genrec_metrics"] = None
@@ -209,13 +212,22 @@ def recommend(user_id: int, k: int = 12, lam: float = 0.6):
     return {"user_id": user_id, "latency_ms": round((time.time() - t0) * 1000, 1), "items": out}
 
 
+# 中文类型同义词 → MovieLens 英文类型（语料全英文，中文查询先展开）
+ZH_GENRES = {"科幻": "sci-fi", "爱情": "romance", "喜剧": "comedy", "动作": "action",
+             "动画": "animation", "恐怖": "horror", "惊悚": "thriller", "剧情": "drama",
+             "战争": "war", "奇幻": "fantasy", "悬疑": "mystery", "犯罪": "crime",
+             "冒险": "adventure", "纪录": "documentary", "音乐": "musical",
+             "西部": "western", "儿童": "children", "黑色电影": "film-noir"}
+
+
 @app.get("/search")
 def search(q: str, k: int = 20):
     ql = q.lower().strip()
+    zh_en = [en.lower() for zh, en in ZH_GENRES.items() if zh in q]
     out = []
     for mid, mv in STATE["movies"].items():
         hay = (mv["title"] + " " + " ".join(mv["genres"]) + " " + mv.get("top_tags", "")).lower()
-        if ql in hay:
+        if ql in hay or (zh_en and all(en in hay for en in zh_en)):
             out.append({"movie_id": mid, "title": mv["title"], "year": mv["year"],
                         "genres": mv["genres"], "n_ratings": STATE["pop_n"].get(mid),
                         "avg_rating": STATE["pop_avg"].get(mid)})

@@ -96,6 +96,13 @@ async function loadMetrics() {
 }
 
 loadRec(); loadMetrics();
+
+// 深链支持：/ ?uid=1&q=科幻 直接进入对应演示状态
+(async () => {
+  const p = new URLSearchParams(location.search);
+  if (p.get('uid')) { document.getElementById('uid').value = p.get('uid'); await loadRec(); }
+  if (p.get('q')) { document.getElementById('q').value = p.get('q'); await loadSearch(); }
+})();
 </script>
 </body>
 </html>
