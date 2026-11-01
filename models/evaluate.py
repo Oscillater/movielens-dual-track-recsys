@@ -299,6 +299,10 @@ def main():
         elif name == "fusion":
             ch = FusionChannel([PopChannel(items), ItemCFChannel(args.data, items),
                                 ALSChannel(args.data, valid)])
+        elif name == "fusion_no_als":
+            ch = FusionChannel([PopChannel(items), ItemCFChannel(args.data, items)])
+        elif name == "fusion_no_itemcf":
+            ch = FusionChannel([PopChannel(items), ALSChannel(args.data, valid)])
             recs = ch.topk(users, args.k, seen_map, valid)
         elif name == "genrec":
             recs = genrec_placeholder(users, args.k, seen_map, valid)
