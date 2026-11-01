@@ -28,5 +28,25 @@
     "coverage": 0.1535,
     "genre_diversity@50": 15.49,
     "latency_ms_per_user": 2.85
+  },
+  "sasrec": {
+    "n_users": 162541,
+    "Recall@10": 0.0361,
+    "Recall@50": 0.1379,
+    "NDCG@10": 0.0165,
+    "NDCG@50": 0.0381,
+    "coverage": 0.0866,
+    "genre_diversity@50": 16.18,
+    "latency_ms_per_user": 3.68
+  },
+  "fusion": {
+    "n_users": 162541,
+    "Recall@10": 0.0739,
+    "Recall@50": 0.2239,
+    "NDCG@10": 0.0371,
+    "NDCG@50": 0.0693,
+    "coverage": 0.1034,
+    "genre_diversity@50": 16.25,
+    "latency_ms_per_user": 0.52
   }
 }

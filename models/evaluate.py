@@ -205,7 +205,7 @@ class SASRecChannel(Channel):
         B = 1024
         for s in range(0, len(users), B):
             chunk = users[s:s + B]
-            hist_b, mask_rows = [], []
+            hist_b = []
             for u in chunk:
                 h = [i for i in seen_map[u] if i in row_of][-self.maxlen:]
                 pad = self.maxlen - len(h)
@@ -213,8 +213,7 @@ class SASRecChannel(Channel):
             with torch.no_grad():
                 x = torch.tensor(hist_b, dtype=torch.long)
                 hidden = self.model(x)[:, -1, :]
-                emb = self.model.item_emb(self.item_ids_t) if hasattr(self, "item_ids_t") else None
-            scores = (hidden @ self.model.item_emb.weight.T).numpy()
+                scores = (hidden @ self.model.item_emb.weight.T).numpy()
             for row, u in enumerate(chunk):
                 sc = scores[row]
                 for i in seen_map[u]:
