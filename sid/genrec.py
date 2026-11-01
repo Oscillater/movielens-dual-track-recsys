@@ -210,14 +210,15 @@ def generate(model, hist_tokens, space, beam, topk, device="cpu", exclude=None):
     for _ in range(4):                     # SID depth is 3 or 4 tokens
         if not beams:
             break
+        xs = torch.tensor([(ctx + toks)[-model.maxlen:] for _, toks, _ in beams], dtype=torch.long)
+        logps = torch.log_softmax(model(xs)[:, -1, :], dim=-1)   # one forward per step for ALL beams
         cand = []
-        for score, toks, node in beams:
-            x = torch.tensor([(ctx + toks)[-model.maxlen:]], dtype=torch.long)
-            logp = torch.log_softmax(model(x)[0, -1], dim=-1)
-            for t in torch.topk(logp, beam * 3).indices.tolist():
+        for bi, (score, toks, node) in enumerate(beams):
+            row = logps[bi]
+            for t in torch.topk(row, beam * 3).indices.tolist():
                 if t in node and t != space.PAD:
                     child = node[t]
-                    ns = score + float(logp[t])
+                    ns = score + float(row[t])
                     if "#" in child:
                         done.append((ns, toks + [t]))
                     else:
