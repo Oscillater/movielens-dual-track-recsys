@@ -460,7 +460,7 @@
   \footnotesize
   \textbf{在线资源}\\[2pt]
   \begin{itemize}
-    \item 代码仓库：\alert{（GitHub/Gitee 链接，提交前填入）}
+    \item 代码仓库：\href{https://github.com/Oscillater/movielens-dual-track-recsys}{\mono{github.com/Oscillater/movielens-dual-track-recsys}}
     \item 数据集：\mono{grouplens.org/datasets/movielens/25m/}
     \item 文档：实验汇总 \mono{experiments/summary.md}
     \item 生成式推荐参考：TIGER（Google）、OneRec（快手）、\mono{github.com/LSH2003/MiniOneRec}
@@ -471,7 +471,7 @@
     \item 数据与模型：\mono{spark/etl.py} $\to$ \mono{als.py} $\to$ \mono{samples.py} $\to$ \mono{gbt.py} $\to$ \mono{export.py}；训练/评测脚本在 \mono{models/}、\mono{sid/}
     \item 启动服务：\mono{python -m uvicorn serving.app:app --port 8000}
     \item 结果与截图：\mono{experiments/summary.md}、\mono{experiments/screenshots/}
-    \item 权重与数据集体积较大未入库，按脚本重建；如需直取可在 Release 附带 \mono{artifacts/} 压缩包
+    \item 权重未入库：Release \href{https://github.com/Oscillater/movielens-dual-track-recsys/releases/tag/v1.0-course}{\mono{v1.0-course}}（\mono{movie-search-rec-artifacts-v1.zip}，196 MB）；数据集按脚本重建
   \end{itemize}
 \end{frame}
 
