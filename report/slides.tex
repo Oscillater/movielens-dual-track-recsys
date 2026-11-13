@@ -50,7 +50,7 @@
 \newcommand{\kicker}[1]{{\color{mute}\footnotesize\texttt{\MakeUppercase{#1}}}\par\vspace{1pt}}
 \newcommand{\stat}[3][26]{{\fontsize{#1}{\numexpr#1+2\relax}\selectfont\bfseries\textcolor{accent}{\texttt{#2}}}\\[1pt]{\color{mute}\small #3}\par}
 \newcommand{\mono}[1]{\texttt{#1}}
-\newcommand{\cellbox}[2]{\fcolorbox{line}{cellbg}{\parbox[t][#1][t]{\dimexpr\linewidth-2\fboxsep-0.4pt\relax}{#2}}}
+\newcommand{\cellbox}[2]{\fcolorbox{line}{cellbg}{\parbox[t][#1][t]{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}{#2}}}
 \newcommand{\darkpage}{%
   \setbeamercolor{background canvas}{bg=ink}%
   \setbeamercolor{normal text}{fg=darkfg}%
@@ -80,7 +80,7 @@
   \vspace{6mm}
   {\color{accent}\rule{28pt}{5pt}}\par\vspace{12pt}
   {\color{darkfg}\fontsize{30}{36}\selectfont\bfseries 基于大数据架构的\\[4pt] 电影搜索与推荐系统\textcolor{accent}{.}}\par\vspace{12pt}
-  {\color{mute}\large MovieLens 25M 数据集上的多路召回、精排重排与生成式推荐：\\[2pt] 设计、实现与实验评测}
+  {\color{mute}\large MovieLens 25M 上的多路召回、精排重排与生成式推荐}
   \vfill
   {\color{darkfg}\footnotesize\texttt{MovieLens 25M ~~·~~ Hadoop 3.3.6 / Hive 4.0.1 / Spark 3.5.9 ~~·~~ CPU only}}\\[4pt]
   {\color{mute}\footnotesize （姓名 · 学号）\hfill 2026 年 11 月}
@@ -95,10 +95,10 @@
     \column{0.08\textwidth}\color{accent}\rule{2pt}{52mm}
     \column{0.88\textwidth}
     {\large
-    \texttt{\textcolor{accent}{01}}\quad 项目介绍：研究背景、任务定义与约束条件\\[11pt]
-    \texttt{\textcolor{accent}{02}}\quad 设计实现：集群环境、数据仓库与模型体系\\[11pt]
-    \texttt{\textcolor{accent}{03}}\quad 实验结果：统一评测、对比分析与消融实验\\[11pt]
-    \texttt{\textcolor{accent}{04}}\quad 项目总结：主要贡献、经验与不足\\[11pt]
+    \texttt{\textcolor{accent}{01}}\quad 项目介绍：任务目标、数据规模与课程知识点映射\\[11pt]
+    \texttt{\textcolor{accent}{02}}\quad 设计实现：集群环境、数仓分层与六类模型架构\\[11pt]
+    \texttt{\textcolor{accent}{03}}\quad 实验结果：统一评测、消融分析与负结果归因\\[11pt]
+    \texttt{\textcolor{accent}{04}}\quad 项目总结：主要贡献、工程经验与改进方向\\[11pt]
     \texttt{\textcolor{accent}{05}}\quad 成员分工\\[11pt]
     \texttt{\textcolor{accent}{06}}\quad 资源链接与复现方式}
   \end{columns}
@@ -107,19 +107,22 @@
 % =====================================================
 \divider{01}{项目介绍}
 
-\begin{frame}{研究背景与任务定义}
+\begin{frame}{项目背景与任务定义}
   \kicker{task}
-  本文基于自建三节点 Hadoop 集群，针对 MovieLens 25M 数据集构建了完整的搜索与推荐系统：数据经 Spark ETL 写入 Hive 分层数仓，六类模型在集群上完成训练，全部模型在同一套指标与数据切分下进行对比（生成式通道按抽样规模单独标注），最终以 Web 服务形式交付。
+  基于自建三节点 Hadoop/Spark 集群处理 MovieLens 25M 数据集，构建从离线数仓、多模型训练到在线检索推荐的完整闭环，并在同一评测协议下对比判别式推荐漏斗与生成式推荐。
 
-  \vspace{10pt}
+  \vspace{8pt}
   \begin{columns}[T]
-    \column{0.31\textwidth}\cellbox{17mm}{\centering\vspace{2pt}\stat[20]{25{,}000{,}095}{条评分}}
-    \column{0.31\textwidth}\cellbox{17mm}{\centering\vspace{2pt}\stat{162{,}541}{个用户，主评测全量}}
-    \column{0.31\textwidth}\cellbox{17mm}{\centering\vspace{2pt}\stat{62{,}423}{部电影，全量候选集}}
+    \column{0.31\textwidth}\cellbox{17mm}{\centering\vspace{2pt}\stat[20]{25{,}000{,}095}{条评分记录}}
+    \column{0.31\textwidth}\cellbox{17mm}{\centering\vspace{2pt}\stat{162{,}541}{名评测用户（全量）}}
+    \column{0.31\textwidth}\cellbox{17mm}{\centering\vspace{2pt}\stat{62{,}423}{部候选电影（全量）}}
   \end{columns}
 
-  \vspace{10pt}\small
-  课程知识点的对应关系如下：协同过滤对应召回层（ALS、ItemCF），分类对应精排层（LR/FM/DeepFM），回归对应独立的热度预测模块，聚类对应语义 ID 中的残余量化；自建 Linux 集群与生成式推荐属于加分项，均已实现。
+  \vspace{8pt}\small
+  \begin{itemize}
+    \item \textbf{课程核心要求}：协同过滤（ALS、ItemCF 召回） $\cdot$ 分类（LR / FM / DeepFM 精排） $\cdot$ 回归（GBT 热度预测） $\cdot$ 聚类（语义 ID 残差量化）
+    \item \textbf{拓展加分项}：自建三节点 Linux 集群 $\cdot$ 生成式推荐（TIGER / OneRec 范式）
+  \end{itemize}
 \end{frame}
 
 \begin{frame}{系统总体架构}
@@ -129,18 +132,21 @@
                   font=\scriptsize\bfseries,align=center,minimum height=15mm},
       arr/.style={-{Stealth[length=2.5mm]},line width=1.1pt,accent}]
     \node[box] (data) {MovieLens 25M\\2500 万评分};
-    \node[box,right=of data] (etl) {Spark ETL\\Hive ODS/DWD/DWS\\leave-last-out 划分};
+    \node[box,right=of data] (etl) {Spark ETL\\Hive 三层数仓\\leave-last-out 切分};
     \node[box,right=of etl] (train) {模型训练\\ALS / ItemCF / SASRec\\DeepFM / GBT / SID};
-    \node[box,below=9mm of train] (eval) {统一评测\\全量排序 + 消融\\RRF 融合};
-    \node[box,left=of eval] (serve) {在线服务\\FastAPI 多路召回\\MMR 重排};
+    \node[box,below=9mm of train] (eval) {统一评测\\6.2 万全量排序\\消融 + RRF 融合};
+    \node[box,left=of eval] (serve) {在线服务\\FastAPI 搜推接口\\MMR 多样性重排};
     \node[box,left=of serve] (web) {Web 前端\\ECharts 看板};
     \draw[arr] (data)--(etl); \draw[arr] (etl)--(train);
     \draw[arr] (train)--(eval);
     \draw[arr] (eval)--(serve); \draw[arr] (serve)--(web);
   \end{tikzpicture}
 
-  \vspace{8pt}\small
-  生成式推荐为独立支线：电影内容首先量化为语义 ID，再由自回归模型直接生成推荐序列（TIGER / OneRec 范式）。全部模型采用同一份数据划分与同一套指标进行评估；各组件均开展消融实验，以量化其对整体性能的贡献。
+  \vspace{6pt}\small
+  \begin{itemize}
+    \item \textbf{判别式主干}：四路召回从 6.2 万候选中快速筛选 Top-K $\to$ 排名融合 $\to$ MMR 多样性重排 $\to$ FastAPI 实时服务。
+    \item \textbf{生成式支线}：将电影内容量化为 4 位语义 ID（SID），由自回归 Transformer 直接生成推荐序列；两条路线共用同一测试集对比。
+  \end{itemize}
 \end{frame}
 
 % =====================================================
@@ -149,14 +155,14 @@
 \begin{frame}{分布式实验环境}
   \begin{columns}[T]
     \column{0.52\textwidth}
-    \small 在单台 VMware 虚拟机内，通过 Docker 编排三节点集群：
+    \small 在单台 VMware 虚拟机内，通过 Docker 编排\textbf{三节点集群}：
     \begin{itemize}
-      \item \textbf{master}：NameNode、ResourceManager，Spark 提交节点
-      \item \textbf{worker1 / worker2}：DataNode、NodeManager
-      \item Hive 4.0.1 的 Metastore 存储于 MySQL 8；HBase 2.6.1 依赖 ZooKeeper 协调
+      \item \textbf{master}：NameNode、ResourceManager、Spark 作业提交节点
+      \item \textbf{worker1 / worker2}：DataNode、NodeManager 计算节点
+      \item \textbf{存储与元数据}：Hive 4.0.1（MySQL 8）+ HBase 2.6.1（ZooKeeper）
     \end{itemize}
     \vspace{6pt}
-    性能优化：将 Spark 依赖 jar 打包为 \mono{spark.yarn.archive} 上传至 HDFS，作业启动时免除分发包环节，启动等待由分钟级降至秒级。
+    \textbf{启动优化}：将 Spark 依赖包预先打包为 \mono{spark.yarn.archive} 上传至 HDFS，免除每次提交作业时的分发开销，启动等待由\textbf{分钟级降至秒级}。
     \column{0.44\textwidth}
     \centering
     \includegraphics[width=\linewidth]{yarn_running_app.png}\\[2pt]
@@ -164,77 +170,79 @@
   \end{columns}
 \end{frame}
 
-\begin{frame}{数据仓库分层与数据集划分}
+\begin{frame}{数仓分层与数据集切分}
   \small
-  \begin{tabular}{@{}p{0.14\textwidth}p{0.82\textwidth}@{}}
+  \begin{tabular}{@{}p{0.15\textwidth}p{0.81\textwidth}@{}}
     \toprule
-    \textbf{ODS} & ratings / movies / tags 原始数据原样入表，不做解析，保证全流程可重放 \\
-    \textbf{DWD} & Parquet 明细层；以正则表达式抽取标题年份；通过窗口函数实现 leave-last-out 划分：每用户最后两条记录作为验证集与测试集 \\
-    \textbf{DWS} & 用户与电影统计、共现矩阵、行为序列。\alert{仅基于训练段计算}，验证集与测试集信息不参与特征构造 \\
+    \textbf{ODS 原始层} & ratings / movies / tags 原始数据原样入表，保证全流程可重放 \\
+    \textbf{DWD 明细层} & 转存 Parquet；正则抽取电影年份；按用户时间窗执行 leave-last-out 切分（\textbf{最后 1 条测试、倒数第 2 条验证}） \\
+    \textbf{DWS 汇总层} & 计算用户/物品统计量、共现矩阵与行为序列。\alert{仅基于训练集统计}，严格隔离验证集与测试集 \\
     \bottomrule
   \end{tabular}
 
-  \vspace{10pt}\small
-  一致性校验：25{,}000{,}095 条评分划分后，验证集与测试集各为 162{,}541 行，与用户数完全一致。
+  \vspace{8pt}\small
+  数据校验：25{,}000{,}095 条评分切分后，验证集与测试集各为 162{,}541 行（每用户 1 条）。
 
-  \vspace{8pt}
-  \cellbox{15mm}{\small\textbf{兼容性问题与解决方案}：Hive 4.0.1 Metastore 的 Thrift 接口与 Spark 3.5 不兼容，调用时报错 \mono{Invalid method name: 'get\_table'}。本系统采用元数据目录解耦方案：以 Spark 内嵌 Derby 为元数据源，Hive 通过外部表镜像同一份数据，两侧均可执行 SQL 查询。}
+  \vspace{6pt}
+  \cellbox{15mm}{\small\textbf{工程问题与解决}：Hive 4.0 Metastore 与 Spark 3.5 Thrift 接口不兼容（报错 \mono{Invalid method name: 'get\_table'}）。\textbf{方案}：采用存储层解耦——Spark 使用内置 Derby 管理元数据，Hive 通过外部表映射同一份 HDFS Parquet 目录，两侧均可执行 SQL。}
 \end{frame}
 
-\begin{frame}{多路召回策略}
-  \vspace{2pt}
+\begin{frame}{多路召回与排名融合}
+  \vspace{1pt}
   \begin{columns}[T]
-    \column{0.49\textwidth}\cellbox{18mm}{\small\textbf{热门}\hfill{\color{mute}\scriptsize\texttt{0.06ms}}\\新用户冷启动通道，仅从 Top-500 流行候选中召回。}
-    \column{0.49\textwidth}\cellbox{18mm}{\small\textbf{ItemCF}\hfill{\color{mute}\scriptsize\texttt{4.5ms}}\\基于共现统计，引入贡献限流以抑制热门物品主导。}
+    \column{0.49\textwidth}\cellbox{15.5mm}{\small\textbf{热门召回}\hfill{\color{mute}\scriptsize\texttt{0.06ms}}\\面向新用户冷启动，从全局高热度 Top-500 候选中召回。}
+    \column{0.49\textwidth}\cellbox{15.5mm}{\small\textbf{ItemCF 物品协同}\hfill{\color{mute}\scriptsize\texttt{4.5ms}}\\基于物品共现矩阵，对高频活跃用户做贡献降权以抑制热门偏置。}
   \end{columns}
-  \vspace{3pt}
+  \vspace{5pt}
   \begin{columns}[T]
-    \column{0.49\textwidth}\cellbox{24mm}{\small\textbf{ALS（隐式）}\hfill{\color{mute}\scriptsize\texttt{2.9ms}}\\$\alpha{=}40$，全部行为视为正样本。初版采用显式评分训练，R@50 仅 0.0001：模型只拟合了高评分物品的全局流行度，无法刻画个体点击倾向；改为隐式建模后达到 0.2405。}
-    \column{0.49\textwidth}\cellbox{24mm}{\small\textbf{SASRec}\hfill{\color{mute}\scriptsize\texttt{1.3ms}}\\自注意力序列模型（d64 / 2 层 / maxlen 50），以物品嵌入向量对全量候选排序，CPU 环境下采样训练。}
+    \column{0.49\textwidth}\cellbox{21mm}{\small\textbf{ALS 隐式分解}\hfill{\color{mute}\scriptsize\texttt{2.9ms}}\\将交互行为建模为隐式正反馈（$\alpha{=}40$）。初版显式拟合评分时 R@50 仅 0.0001（偏向高分冷门），改为隐式建模后达 \textbf{0.2405}。}
+    \column{0.49\textwidth}\cellbox{21mm}{\small\textbf{SASRec 序列召回}\hfill{\color{mute}\scriptsize\texttt{1.3ms}}\\2 层自注意力网络（d=64，序列长度 50），基于近期交互序列预测下一物品并做全量内积检索。}
   \end{columns}
 
   \vspace{4pt}\small
-  四路结果采用 RRF 融合：$\mathrm{score}(i)=\sum_{c}\frac{1}{60+\mathrm{rank}_c(i)}$。该方式仅依赖排名、不依赖分数绝对值，避免了各通道分数量纲不一致的问题。\par\vspace{2pt}
-  {\footnotesize\color{mute}在线服务改用归一化排名累加（Borda 式）以匹配 MMR 量纲，排序与 RRF 接近但数值不可混用。}
+  \textbf{多路融合}：各通道分数量纲不同，离线采用 \textbf{RRF 倒数排名融合} $\mathrm{score}(i)=\sum_{c}\frac{1}{60+\mathrm{rank}_c(i)}$，仅依赖名次实现稳健聚合。\par\vspace{2pt}
+  {\footnotesize\color{mute}注：在线服务采用归一化排名累加（Borda 式）以对齐 MMR 量纲，不与离线数值混用。}
 \end{frame}
 
-\begin{frame}{精排、重排与回归模块}
+\begin{frame}{精排、重排与热度回归}
   \begin{columns}[T]
     \column{0.55\textwidth}
     \small
-    \textbf{CTR 精排}\\[2pt]
-    以评分 $\ge$ 4 定义正样本，构造 10 个特征（3 个稀疏 ID + 7 个连续）：用户与物品统计、年份、时间间隔、类型偏好匹配度。LR、FM、DeepFM 三个模型共用同一套特征与样本，仅模型结构不同，以保证对比公平。
+    \textbf{CTR 精排（二分类）}\\[2pt]
+    以评分 $\ge 4$ 为正样本，构建 \textbf{10 维特征}（3 个稀疏 ID + 7 个连续统计与匹配特征）。\textbf{LR、FM、DeepFM 共用同一套特征与样本}，控制变量公平对比模型结构。
     \vspace{5pt}\\
     \textbf{MMR 多样性重排}\\[2pt]
-    $\lambda{=}0.6$，在相关性与类型多样性之间折中，抑制同质化推荐。
+    $\lambda{=}0.6$，在排序相关性与类型覆盖度之间折中，抑制同类型结果扎堆。
     \column{0.41\textwidth}
     \small
-    \textbf{回归：电影热度预测}\\[2pt]
-    以 2015--2017 年信息预测电影 2018 年后的热度，按时间正向切分训练与测试集，避免信息泄漏。采用 GBT 与 LinearRegression 对比，结果见实验部分。
+    \textbf{电影热度预测（回归）}\\[2pt]
+    基于 2015--2017 年历史特征预测电影在 2018 年后的新增评分数，按时间正向切分防止信息泄漏，对比 GBT 与线性回归。
   \end{columns}
   \vspace{8pt}\footnotesize\color{mute}
-  精排样本在 Spark 端构造，PyTorch 端训练；训练中观察到过拟合，改为依据验证集选择最优检查点（详见总结）。
+  精排样本在 Spark 端生成、PyTorch 端训练；针对训练后期的过拟合现象，统一按验证集指标选取最优检查点。
 \end{frame}
 
 \begin{frame}{生成式推荐分支}
   \begin{columns}[T]
     \column{0.52\textwidth}
     \small
-    \textbf{第一阶段：构建语义 ID}\\[2pt]
-    标题、类型与高频标签经 MiniLM 句向量编码，PCA 降至 32 维，由 faiss ResidualQuantizer 量化为 3 层 × 256 码字，另设第 4 层处理碰撞。
+    \textbf{第一阶段：构建语义 ID（SID）}\\[2pt]
+    电影标题、类型与标签经 MiniLM 编码为句向量，PCA 降至 32 维后由 FAISS 残差量化（RQ）离散化为 \textbf{3 层 $\times$ 256} 码字，第 4 位消解碰撞。
     \vspace{6pt}
 
     \begin{columns}[T]
-      \column{0.48\linewidth}\stat{100\%}{三层码字全部被使用，无码本坍缩}
-      \column{0.48\linewidth}\stat{3.35\%}{ID 碰撞率（62{,}423 部电影）}
+      \column{0.48\linewidth}\stat{100\%}{三层码本利用率，无码本坍缩}
+      \column{0.48\linewidth}\stat{3.35\%}{62{,}423 部电影的 ID 碰撞率}
     \end{columns}
     \column{0.44\textwidth}
     \small
-    \textbf{第二阶段：训练生成模型}\\[2pt]
-    decoder-only Transformer（d128 / 4 层），将用户序列建模为 SID 序列的语言建模任务。推理时束搜索沿 SID Trie 展开，仅在合法前缀上生成，已观看物品被天然排除。
-    \vspace{6pt}
+    \textbf{第二阶段：自回归序列生成}\\[2pt]
+    采用 4 层 Decoder-only Transformer（d=128），将用户历史序列转化为 SID Token 序列，自回归预测下一部电影的 4 位 ID。
+    \vspace{5pt}\\
+    \textbf{Trie 约束束搜索}：解码时沿合法 SID 前缀树展开，保证生成结果 100\% 对应真实电影，并直接屏蔽已观看物品。
+    \vspace{5pt}
 
-    {\color{mute}\footnotesize 线上推理 150ms/人（CPU 束搜索，含全量评估）。该分支是 TIGER / OneRec 工业路线在 CPU 集群上的完整实现。}
+    {\color{mute}\footnotesize CPU 束搜索耗时约 150ms/人，在本地完整复现 TIGER / OneRec 核心范式。}
   \end{columns}
 \end{frame}
 
@@ -242,21 +250,22 @@
   \begin{columns}[T]
     \column{0.5\textwidth}
     \small
-    评测协议遵循以下三条原则：
+    \textbf{离线评测三原则}：
     \begin{itemize}
-      \item 统一 leave-last-out；判别式通道 162{,}541 用户全量，生成式通道固定种子抽样 20{,}000（表中标注）
-      \item 在全部 62{,}423 个候选上排序，\alert{排除已观看物品}
-      \item 指标统一：Recall@K、NDCG@K、覆盖率、类型多样性、延迟
+      \item \textbf{数据切分统一}：共用 leave-last-out 切分；判别式评测 162{,}541 全量用户，生成式固定抽样 20{,}000 用户（表中标注）
+      \item \textbf{全量候选排序}：在 \textbf{62{,}423 部全量候选}上排序，不做小样本负采样，并\alert{强制排除已观看物品}
+      \item \textbf{多维指标对齐}：Recall@K、NDCG@K、覆盖率、多样性、延迟
     \end{itemize}
     \column{0.46\textwidth}
     \small
-    \textbf{在线服务}\\[2pt]
-    FastAPI 服务中，\mono{/recommend} 串联召回、融合与 MMR，DeepFM 精排为 \mono{rank\_mode=deepfm} 可选分支（默认关闭，见实验页）；\mono{/search} 覆盖标题、类型与 genome 标签，支持中文类型同义词映射（如"科幻"→Sci-Fi）；结果附通道徽章。
+    \textbf{在线服务（FastAPI）}\\[2pt]
+    \mono{/recommend}：串联四路召回、排名融合（支持 \mono{rank\_mode=deepfm} 切换精排）与 MMR 重排，返回推荐列表及通道来源徽章。\\[4pt]
+    \mono{/search}：检索标题、类型与 genome 标签，支持中文类型词自动映射（如``科幻''$\to$\mono{Sci-Fi}）。
   \end{columns}
-  \vspace{4pt}
+  \vspace{6pt}
   \begin{columns}[T]
-    \column{0.31\textwidth}\cellbox{14mm}{\centering\vspace{2pt}\stat{162{,}541}{用户全量参与评测}}
-    \column{0.31\textwidth}\cellbox{14mm}{\centering\vspace{2pt}\stat{62{,}423}{候选电影全量排序}}
+    \column{0.31\textwidth}\cellbox{14mm}{\centering\vspace{2pt}\stat{162{,}541}{名用户全量评测}}
+    \column{0.31\textwidth}\cellbox{14mm}{\centering\vspace{2pt}\stat{62{,}423}{部候选电影全量排序}}
     \column{0.31\textwidth}\cellbox{14mm}{\centering\vspace{2pt}\stat[20]{31ms}{推荐接口 p50，p95 62ms}}
   \end{columns}
 \end{frame}
@@ -284,42 +293,42 @@
   \end{tabular}
 
   \vspace{7pt}\small\color{mute}
-  判别式通道为 162{,}541 名用户全量排序并排除已观看物品；GenRec 受 CPU 约束解码成本限制，固定种子抽样 20{,}000 名用户，与大样本列不可直接比较。SASRec v2 为续训 10 轮中按验证集 NDCG@10 选出的第 8 轮检查点，R@50 较 v1 提升 9.7\%。
+  注：判别式通道在 162{,}541 名用户上全量评测；GenRec 受 CPU 束搜索耗时限制固定种子抽样 20{,}000 名用户，不与全量列直接对比。SASRec v2 共训练 18 轮，按验证集 NDCG@10 选取 v2 第 8 轮检查点，R@50 较 v1（0.1379）提升 9.7\%。
 \end{frame}
 
-\begin{frame}{消融分析：ALS 通道的贡献}
+\begin{frame}{消融分析：多路召回与融合的互补性}
   \begin{columns}[T]
     \column{0.42\textwidth}
     \vspace{2pt}
-    \stat{$-$20.6\%}{融合通道 R@50 相对下降（0.2239 $\to$ 0.1777）}\vspace{10pt}
-    \stat{$-$54.0\%}{覆盖率相对下降（0.1034 $\to$ 0.0476），长尾推荐能力大幅减弱}
+    \stat{$-$20.6\%}{移除 ALS 后，融合 R@50 降幅（0.2239 $\to$ 0.1777）}\vspace{10pt}
+    \stat{$-$54.0\%}{移除 ALS 后，覆盖率降幅（0.1034 $\to$ 0.0476）}
     \column{0.54\textwidth}
     \small
-    结果表明，ALS 通道主要贡献长尾覆盖；去除 ItemCF 仅使 R@50 下降 6.1\%，其贡献真实但相对次要。
+    \textbf{单通道角色差异}：移除 ALS 后覆盖率下降超一半，说明热门与 ItemCF 集中在头部流行物品，\textbf{长尾覆盖主要由 ALS 提供}（移除 ItemCF 时 R@50 仅下降 6.1\%）。
 
     \vspace{8pt}
-    进一步分析：单看 R@50 与覆盖率，ALS 单通道为全场最优；但 R@10 与 NDCG@10 最高的均为融合通道。
+    \textbf{单路最优 vs 融合最优}：单看 R@50 与覆盖率，ALS 单路最高（0.2405）；但衡量头部排序质量的 \textbf{R@10（0.0739）与 NDCG@10（0.0371）均由多路融合取得最优}。
 
     \vspace{8pt}
-    \alert{召回层负责覆盖的广度，融合排序负责进入精排的头部质量。}这一互补关系是多路召回架构的价值所在，也是消融实验给出的核心证据。
+    \alert{核心结论：ALS 保障候选池的覆盖广度，多路投票融合提升 Top-10 的头部精度。}
   \end{columns}
 \end{frame}
 
-\begin{frame}{两组与预期不一致的结果及其分析}
+\begin{frame}{精排与回归实验：模型容量与特征边界}
   \begin{columns}[T]
-    \column{0.48\textwidth}\cellbox{34mm}{\small\textbf{DeepFM 未能超越 LR}\\[3pt]Test AUC：LR 0.7573，DeepFM 0.7552，FM 0.7463。在 10 个手工特征条件下，深度结构缺乏可供学习的交叉模式，特征质量构成性能上限。此前观测到的过拟合（AUC 0.7319）通过验证集最优检查点选择得到缓解（0.7552）。}
-    \column{0.48\textwidth}\cellbox{34mm}{\small\textbf{GBT 在时间外推任务上显著占优}\\[3pt]预测电影 2018 年后热度：GBT R² = 0.8917（RMSE 0.5175），LinearRegression 为 R² 0.6551（RMSE 0.9236）。热度增长具有非线性，树模型对此拟合能力更强。}
+    \column{0.48\textwidth}\cellbox{34mm}{\small\textbf{CTR 精排：DeepFM 为何未超越 LR？}\\[3pt]\textbf{LR 0.7573 $\ge$ DeepFM 0.7552 > FM 0.7463}（Test AUC）。当前仅有 10 维基础统计特征，缺乏高阶非线性交叉信号；\textbf{当特征信息量受限时，增加模型深度反而易引发过拟合}（经验证集早停才由 0.7319 恢复至 0.7552）。}
+    \column{0.48\textwidth}\cellbox{34mm}{\small\textbf{热度回归：树模型显著优于线性模型}\\[3pt]\textbf{GBT R² = 0.8917}（RMSE 0.5175），显著优于线性回归的 \textbf{R² = 0.6551}（RMSE 0.9236）。电影 2018 年后新增热度呈明显的长尾非线性分布，梯度提升树对非线性阈值的拟合能力更强。}
   \end{columns}
   \vspace{8pt}\small
-  上述结果虽然不利于"模型越深越好"的预期，但均给出明确归因，避免了仅报告最优指标的呈现偏差。
+  实验结论：模型表现取决于特征信息量与任务分布特性，而非单纯取决于网络深度。
 \end{frame}
 
 \begin{frame}{在线路径重放：精排为何默认关闭}
   \begin{columns}[T]
     \column{0.53\textwidth}
     \small
-    在线服务同源代码，2{,}000 用户重放四条路径：\\[2pt]
-    每路候选 30、排序长度 20。\par
+    基于在线服务同源代码，对 2{,}000 名用户重放四条路径：\\[2pt]
+    每路召回 30 个候选、最终输出 Top-20。\par
 
     \vspace{2pt}
     \begin{center}\footnotesize
@@ -336,11 +345,11 @@
     \end{center}
     \column{0.43\textwidth}
     \small
-    \textbf{归因}\\[2pt]
-    DeepFM 以评分 $\ge 4$ 为标签学习用户—物品的绝对偏好，缺少候选集内的相对比较（candidate-aware）目标；直接替换融合排序使 R@10 下降 41\%。
-    \vspace{6pt}\\
-    \textbf{决策}\\[2pt]
-    线上默认 \mono{rank\_mode=fusion}；DeepFM 保留为可选分支，待候选感知目标重训后再评估。
+    \textbf{负结果归因}\\[2pt]
+    DeepFM 以评分 $\ge 4$ 为二分类标签，学习的是全局绝对偏好，缺少\textbf{同批次召回候选间的相对排序（Candidate-aware）目标}；直接替换融合分使 R@10 下降 41\%。
+    \vspace{5pt}\\
+    \textbf{上线决策}\\[2pt]
+    线上默认采用\textbf{融合 + MMR}（兼顾精度与多样性）；DeepFM 保留为前端可切换分支供对比演示。
   \end{columns}
 \end{frame}
 
@@ -348,7 +357,7 @@
   \begin{columns}[T]
     \column{0.46\textwidth}
     \small
-    \textbf{Spark 数据量扩展性}\\[3pt]
+    \textbf{Spark 数据量扩展性测试}\\[3pt]
     \centering\footnotesize
     \begin{tabular}{lc}
       \toprule
@@ -361,14 +370,14 @@
     \end{tabular}
 
     \vspace{6pt}\footnotesize\color{mute}
-    固定工作负载、含预热轮。数据量 25\% 增至 50\% 时耗时基本持平（并行度存在富余），增至 100\% 时接近线性增长，说明瓶颈在数据 shuffle 而非固定开销，符合集群扩展的预期。
+    含预热轮计时。数据量由 25\% 增至 50\% 时耗时仅增 1.1 秒（集群并行度仍有余量）；增至 100\% 时耗时 23.6 秒，增长主要来自跨节点 Shuffle，符合分布式扩展预期。
     \column{0.5\textwidth}
     \small
-    \textbf{GenRec：范式可行，指标受限}\\[3pt]
-    R@10 = 0.004。经分析，限制因素包括：用户序列长度有限、CPU 算力约束下的训练轮数、SID 量化引入的信息损失。
+    \textbf{生成式 GenRec：全链路跑通与瓶颈分析}\\[3pt]
+    R@10 为 0.0040。受限原因主要有三点：CPU 环境下仅训练 5 轮、用户历史截断为最近 20 部、4 位离散 SID 量化存在信息压缩损失。
 
     \vspace{6pt}
-    该分支沉淀的语义 ID 管线、Trie 约束束搜索与评测协议均可复用，迁移至 GPU 环境后可继续训练优化。
+    \textbf{工程价值}：已完成语义 ID 量化、Trie 约束束搜索与统一评测闭环，具备向 GPU 环境平滑扩展的基础。
   \end{columns}
 \end{frame}
 
@@ -393,39 +402,37 @@
 % =====================================================
 \divider{04}{项目总结}
 
-\begin{frame}{主要贡献与经验总结}
+\begin{frame}{主要贡献与工程经验}
   \begin{columns}[T]
     \column{0.52\textwidth}
     \small
-    \textbf{对照课程考核要点}\\[2pt]
+    \textbf{核心工作与贡献}\\[2pt]
     \begin{itemize}
-      \item 自建 Linux 大数据环境：Docker 三节点集群，独立解决 Hive 4 与 Spark 3.5 的兼容性问题
-      \item 复杂算法：SASRec、DeepFM、RQ 语义 ID、Trie 约束束搜索的生成式推荐
-      \item 课程外技术：faiss、ECharts、FastAPI、增量评测框架
-      \item 各组件均有消融数据支撑，设计决策可量化、可验证
+      \item \textbf{完整大数据闭环}：Docker 三节点集群处理 2500 万评分，打通数仓、训练、评测与在线服务
+      \item \textbf{双范式同台对比}：完整实现判别式漏斗（ALS / ItemCF / SASRec / DeepFM / MMR）与生成式推荐（RQ-SID + Trie 束搜索）
+      \item \textbf{严谨消融与归因}：各组件均有消融或对照实验支撑，对精排负结果给出量化归因与上线决策
     \end{itemize}
     \column{0.44\textwidth}
     \small
-    \textbf{经验总结}\\[2pt]
+    \textbf{四条工程经验}\\[2pt]
     \begin{itemize}
-      \item 显式评分难以建模个体点击倾向，隐式反馈建模更为有效
-      \item 深度模型需要默认防范过拟合，验证集最优检查点应作为标准配置
-      \item 评测结果文件采用增量合并，单通道重跑不影响其他通道结果
-      \item 元数据版本不兼容时，优先保障数据可查询性，再考虑统一元数据
+      \item \textbf{召回建模采用隐式反馈}：显式评分拟合偏置严重，隐式反馈更能捕捉点击倾向
+      \item \textbf{特征质量决定精排上限}：低维统计特征下深度模型易过拟合，需配合验证集早停
+      \item \textbf{离线 AUC 不等于线上增益}：精排需与召回候选分布对齐（Candidate-aware）
+      \item \textbf{存储层解耦规避版本冲突}：以共享 Parquet 绕开 Spark 与 Hive 的元数据接口冲突
     \end{itemize}
   \end{columns}
 \end{frame}
 
-\begin{frame}{不足与后续工作}
+\begin{frame}{局限性与后续改进方向}
   \small
   \begin{itemize}
-    \item 生成式推荐指标偏低，受 CPU 算力限制；后续迁移至 GPU，延长序列与训练轮数，并引入物品内容特征
-    \item 精排性能上限在特征侧：计划引入行为序列特征（DIN 式 target attention）与候选感知训练目标，而非继续增加模型复杂度
-    \item 当前为批训练加在线服务架构，尚缺实时链路：可扩展 Flink 流式特征与定时刷新看板
-    \item 现有评估为离线消融，缺少真实 A/B 实验；可先开展基于重放（replay）的偏置校正评估
+    \item \textbf{生成式推荐训练不足}：当前受限于 CPU 算力与短序列截断（5 轮、最近 20 部）；后续迁移至 GPU 延长训练轮数与序列长度，并融合多模态内容特征
+    \item \textbf{精排特征与训练目标升级}：引入用户近期行为序列特征（DIN 目标注意力机制），并采用基于召回负样本的 Pairwise / Listwise 排序目标重新训练
+    \item \textbf{流批一体架构演进}：在现有离线批处理基础上接入 Flink 实时流处理，实现用户近期交互特征的秒级更新与看板动态刷新
   \end{itemize}
-  \vspace{10pt}
-  \centering{\color{mute}\small 代码规模 26 个源文件、约 3{,}000 行（含文档约 4{,}100 行），覆盖数据、模型、评测、服务四层}
+  \vspace{12pt}
+  \centering{\color{mute}\footnotesize 代码规模：26 个源文件、约 3{,}000 行代码（含文档约 4{,}100 行），覆盖数据、模型、评测与服务四层}
 \end{frame}
 
 % =====================================================
