@@ -80,9 +80,9 @@ project/
   models/       # SASRec、DeepFM/LR/FM、统一评测框架
   serving/      # FastAPI：多路召回 + 排名融合 +（可选）DeepFM + MMR
   web/          # 单页前端（原生 HTML + ECharts CDN）
-  scripts/      # 汇总生成、在线路径重放、过夜接力、VM 辅助
+  scripts/      # 汇总生成、在线路径重放、过夜接力
   experiments/  # 评测结果 JSON/Markdown 与系统截图
-  report/       # Beamer slides、PDF 与页面渲染脚本
+  report/       # Beamer 源文件、编译好的 PDF（页面预览本地生成、不入库）
   docs/         # 从零技术教程
   data/         # 不入库：数据集与训练样本
   artifacts/    # 不入库：模型权重与指标
