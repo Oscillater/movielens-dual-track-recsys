@@ -43,11 +43,10 @@
   \vspace{2pt}}
 
 \setbeamertemplate{footline}{%
-  \leavevmode\hbox{%
-    {\color{mute}\tiny\texttt{\hspace{8pt}movie-search-rec / 课程汇报}}\hfill
-    {\color{mute}\tiny\texttt{\insertframenumber\,/\,\inserttotalframenumber\hspace{8pt}}}}\vspace{5pt}}
+  \leavevmode\hbox to \paperwidth{%
+    {\color{mute}\tiny\hspace{12pt}基于大数据架构的电影搜索与推荐系统}\hfill
+    {\color{mute}\tiny\texttt{\insertframenumber\,/\,\inserttotalframenumber\hspace{12pt}}}}\vspace{5pt}}
 
-\newcommand{\kicker}[1]{{\color{mute}\footnotesize\texttt{\MakeUppercase{#1}}}\par\vspace{1pt}}
 \newcommand{\stat}[3][26]{{\fontsize{#1}{\numexpr#1+2\relax}\selectfont\bfseries\textcolor{accent}{\texttt{#2}}}\\[1pt]{\color{mute}\small #3}\par}
 \newcommand{\mono}[1]{\texttt{#1}}
 \newcommand{\cellbox}[2]{\fcolorbox{line}{cellbg}{\parbox[t][#1][t]{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}{#2}}}
@@ -63,12 +62,10 @@
 {\darkpage
 \begin{frame}[plain]
   \color{darkfg}
-  \vspace{8mm}
-  {\fontsize{64}{64}\selectfont\bfseries\textcolor{accent}{\texttt{#1}}}\\[6pt]
-  {\fontsize{34}{38}\selectfont\bfseries #2}
+  \vspace{12mm}
+  {\fontsize{56}{56}\selectfont\bfseries\textcolor{accent}{\texttt{#1}}}\\[8pt]
+  {\fontsize{32}{36}\selectfont\bfseries #2}
   \vfill
-  {\color{mute}\small\texttt{section #1 / 06}}
-  \vspace{6mm}
 \end{frame}}}
 
 \title{基于大数据架构的电影搜索与推荐系统}
@@ -77,14 +74,12 @@
 % ================= 封面（暗页） =================
 {\darkpage
 \begin{frame}[plain]
-  \vspace{6mm}
-  {\color{accent}\rule{28pt}{5pt}}\par\vspace{12pt}
-  {\color{darkfg}\fontsize{30}{36}\selectfont\bfseries 基于大数据架构的\\[4pt] 电影搜索与推荐系统\textcolor{accent}{.}}\par\vspace{12pt}
+  \vspace{16mm}
+  {\color{darkfg}\fontsize{30}{38}\selectfont\bfseries 基于大数据架构的\\[4pt] 电影搜索与推荐系统}\par\vspace{12pt}
   {\color{mute}\large MovieLens 25M 上的多路召回、精排重排与生成式推荐}
   \vfill
-  {\color{darkfg}\footnotesize\texttt{MovieLens 25M ~~·~~ Hadoop 3.3.6 / Hive 4.0.1 / Spark 3.5.9 ~~·~~ CPU only}}\\[4pt]
-  {\color{mute}\footnotesize （姓名 · 学号）\hfill 2026 年 11 月}
-  \vspace{5mm}
+  {\color{mute}\footnotesize 2026 年 11 月}
+  \vspace{6mm}
 \end{frame}}
 
 % ================= 提纲 =================
@@ -108,20 +103,19 @@
 \divider{01}{项目介绍}
 
 \begin{frame}{项目背景与任务定义}
-  \kicker{task}
   基于自建三节点 Hadoop/Spark 集群处理 MovieLens 25M 数据集，构建从离线数仓、多模型训练到在线检索推荐的完整闭环，并在同一评测协议下对比判别式推荐漏斗与生成式推荐。
 
-  \vspace{8pt}
+  \vspace{10pt}
   \begin{columns}[T]
     \column{0.31\textwidth}\cellbox{17mm}{\centering\vspace{2pt}\stat[20]{25{,}000{,}095}{条评分记录}}
     \column{0.31\textwidth}\cellbox{17mm}{\centering\vspace{2pt}\stat{162{,}541}{名评测用户（全量）}}
     \column{0.31\textwidth}\cellbox{17mm}{\centering\vspace{2pt}\stat{62{,}423}{部候选电影（全量）}}
   \end{columns}
 
-  \vspace{8pt}\small
+  \vspace{10pt}\small
   \begin{itemize}
-    \item \textbf{课程核心要求}：协同过滤（ALS、ItemCF 召回） $\cdot$ 分类（LR / FM / DeepFM 精排） $\cdot$ 回归（GBT 热度预测） $\cdot$ 聚类（语义 ID 残差量化）
-    \item \textbf{拓展加分项}：自建三节点 Linux 集群 $\cdot$ 生成式推荐（TIGER / OneRec 范式）
+    \item \textbf{课程核心要求}：协同过滤（ALS、ItemCF 召回）、分类（LR / FM / DeepFM 精排）、回归（GBT 热度预测）、聚类（语义 ID 残差量化）
+    \item \textbf{拓展加分项}：自建三节点 Linux 集群、生成式推荐（TIGER / OneRec 范式）
   \end{itemize}
 \end{frame}
 
@@ -480,17 +474,5 @@
     \item 权重与数据集体积较大未入库，按脚本重建；如需直取可在 Release 附带 \mono{artifacts/} 压缩包
   \end{itemize}
 \end{frame}
-
-% ================= 结尾（暗页） =================
-{\darkpage
-\begin{frame}[plain]
-  \color{darkfg}
-  \vspace{10mm}
-  {\fontsize{40}{44}\selectfont\bfseries 谢谢\textcolor{accent}{.}}\\[10pt]
-  {\normalsize 在线演示：\texttt{http://127.0.0.1:8000}\quad（参数 \mono{?uid=1\&q=科幻} 可直达演示状态）}
-  \vfill
-  {\color{mute}\small （姓名 · 学号）\hfill 2026 年 11 月}
-  \vspace{5mm}
-\end{frame}}
 
 \end{document}
