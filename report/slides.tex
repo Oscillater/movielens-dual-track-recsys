@@ -105,18 +105,24 @@
 \begin{frame}{项目背景与任务定义}
   基于自建三节点 Hadoop/Spark 集群处理 MovieLens 25M 数据集，构建从离线数仓、多模型训练到在线检索推荐的完整闭环，并在同一评测协议下对比判别式推荐漏斗与生成式推荐。
 
-  \vspace{10pt}
+  \vspace{1pt}
   \begin{columns}[T]
-    \column{0.31\textwidth}\cellbox{17mm}{\centering\vspace{2pt}\stat[20]{25{,}000{,}095}{条评分记录}}
-    \column{0.31\textwidth}\cellbox{17mm}{\centering\vspace{2pt}\stat{162{,}541}{名评测用户（全量）}}
-    \column{0.31\textwidth}\cellbox{17mm}{\centering\vspace{2pt}\stat{62{,}423}{部候选电影（全量）}}
+    \column{0.31\textwidth}\cellbox{14mm}{\centering\vspace{2pt}\stat[20]{25{,}000{,}095}{条评分记录}}
+    \column{0.31\textwidth}\cellbox{14mm}{\centering\vspace{2pt}\stat{162{,}541}{名评测用户（全量）}}
+    \column{0.31\textwidth}\cellbox{14mm}{\centering\vspace{2pt}\stat{62{,}423}{部候选电影（全量）}}
   \end{columns}
 
-  \vspace{10pt}\small
+  \vspace{2pt}\small
   \begin{itemize}
     \item \textbf{课程核心要求}：协同过滤（ALS、ItemCF 召回）、分类（LR / FM / DeepFM 精排）、回归（GBT 热度预测）、聚类（语义 ID 残差量化）
     \item \textbf{拓展加分项}：自建三节点 Linux 集群、生成式推荐（TIGER / OneRec 范式）
   \end{itemize}
+
+  \vspace{2pt}\footnotesize
+  \textbf{主要功能}\\[1pt]{\scriptsize
+  \textbf{个性化推荐}：\mono{/recommend} 多路召回 $\to$ 排名融合 $\to$ MMR 多样性重排\\[1pt]
+  \textbf{关键词检索}：\mono{/search} 覆盖标题、类型与 Genome 标签，支持中文类型词映射\\[1pt]
+  \textbf{交互与看板}：\mono{/history}、\mono{/metrics} 接口与 ECharts 可视化前端}
 \end{frame}
 
 \begin{frame}{系统总体架构}
