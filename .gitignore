@@ -20,3 +20,6 @@ Thumbs.db
 *.out
 *.snm
 *.toc
+
+# 汇报 PDF 的页面预览（由 report/render_pages.py 生成）
+report/pages/
