@@ -1,0 +1,19 @@
+[project]
+name = "movie-search-rec"
+version = "0.1.0"
+description = "MovieLens 25M search and recommendation system on a three-node Spark/Hive cluster"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy==2.4.6",
+    "pandas==3.1.0",
+    "scipy==1.17.1",
+    "torch==2.15.0",
+    "faiss-cpu==1.15.1",
+    "fastapi==0.162.0",
+    "uvicorn==0.54.0",
+    "sentence-transformers==6.2.0",
+    "pymupdf==2.0",
+]
+
+[tool.uv]
+# PySpark runs inside the cluster (spark-submit), not in the host venv.
