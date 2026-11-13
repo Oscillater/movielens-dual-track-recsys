@@ -3,7 +3,6 @@
 课程项目：大数据架构的数据处理与分析系统（独立完成）
 
 - 实验结果汇总：[experiments/summary.md](experiments/summary.md)
-- 项目汇报材料：[report/slides.pdf](report/slides.pdf)
 
 ## 摘要
 

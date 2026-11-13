@@ -29,3 +29,6 @@ report/pages/
 /scripts/overnight.py
 /scripts/watcher2.py
 /docs/tech-tutorial.md
+
+# 汇报 PDF 与报告 PDF 作为 Release 资产发布，不入库
+report/*.pdf
