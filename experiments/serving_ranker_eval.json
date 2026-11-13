@@ -1,0 +1,53 @@
+{
+  "protocol": {
+    "users": 2000,
+    "seed": 42,
+    "candidate_recall_k_per_channel": 30,
+    "rank_k": 20,
+    "mmr_lambda": 0.6,
+    "note": "online-path replay; DeepFM uses serving-time feature approximations"
+  },
+  "fusion_direct": {
+    "n_users": 2000,
+    "Recall@10": 0.0745,
+    "Recall@20": 0.1205,
+    "NDCG@10": 0.0359,
+    "NDCG@20": 0.0474,
+    "coverage": 0.0352,
+    "genre_diversity@20": 14.13
+  },
+  "deepfm_direct": {
+    "n_users": 2000,
+    "Recall@10": 0.044,
+    "Recall@20": 0.08,
+    "NDCG@10": 0.0215,
+    "NDCG@20": 0.0305,
+    "coverage": 0.0273,
+    "genre_diversity@20": 13.21
+  },
+  "fusion_mmr": {
+    "n_users": 2000,
+    "Recall@10": 0.076,
+    "Recall@20": 0.1225,
+    "NDCG@10": 0.0357,
+    "NDCG@20": 0.0473,
+    "coverage": 0.0347,
+    "genre_diversity@20": 15.22
+  },
+  "deepfm_mmr": {
+    "n_users": 2000,
+    "Recall@10": 0.0405,
+    "Recall@20": 0.0845,
+    "NDCG@10": 0.0193,
+    "NDCG@20": 0.0303,
+    "coverage": 0.0294,
+    "genre_diversity@20": 16.07
+  },
+  "decision": {
+    "serving_default": "fusion",
+    "deepfm": "available via rank_mode=deepfm, not default",
+    "reason": "DeepFM directly replacing the recall score loses 41% R@10; the CTR model needs a candidate-aware training objective before it can rank the funnel"
+  },
+  "deepfm_score_ms_per_user": 11.17,
+  "total_seconds": 266.6
+}

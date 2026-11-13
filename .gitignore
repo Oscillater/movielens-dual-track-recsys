@@ -12,3 +12,11 @@ __pycache__/
 # 系统
 .DS_Store
 Thumbs.db
+
+# LaTeX 中间文件
+*.aux
+*.log
+*.nav
+*.out
+*.snm
+*.toc

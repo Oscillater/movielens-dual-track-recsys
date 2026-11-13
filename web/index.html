@@ -11,6 +11,7 @@
   header h1 { font-size: 18px; color: #7aa2ff; }
   header input { flex: 0 1 420px; padding: 9px 14px; border-radius: 8px; border: 1px solid #2c3a5c; background: #0f1420; color: #e8ecf4; }
   header button { padding: 9px 18px; border-radius: 8px; border: none; background: #3b6ef5; color: white; cursor: pointer; }
+  header label { color: #9fb3d9; font-size: 12px; white-space: nowrap; cursor: pointer; }
   main { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; padding: 18px 28px; }
   .card { background: #131a2b; border: 1px solid #232d45; border-radius: 12px; padding: 16px; }
   .card h2 { font-size: 14px; color: #9fb3d9; margin-bottom: 10px; }
@@ -29,12 +30,13 @@
   <h1>🎬 电影搜推系统</h1>
   <input id="uid" value="123" size="6" title="用户ID">
   <button onclick="loadRec()">换一批推荐</button>
-  <input id="q" placeholder="搜索电影 / 类型 / 标签，如：科幻、Nolan、1994">
+  <label><input id="useRanker" type="checkbox" onchange="loadRec()"> DeepFM 精排</label>
+  <input id="q" placeholder="搜索电影 / 类型 / 标签，如：科幻、time travel、1994">
   <button onclick="loadSearch()">搜索</button>
 </header>
 <main>
   <div>
-    <div class="card"><h2>推荐结果（多路召回 → 精排 → MMR 多样性重排）</h2><div id="recs"></div></div>
+    <div class="card"><h2>推荐结果（多路召回 → 融合排序 / DeepFM 精排 → MMR 多样性重排）</h2><div id="recs"></div></div>
     <div class="card" style="margin-top:18px"><h2>搜索结果</h2><div id="searches"></div></div>
   </div>
   <div>
@@ -50,12 +52,14 @@ const aucChart = echarts.init(document.getElementById('aucChart'));
 
 async function loadRec() {
   const uid = document.getElementById('uid').value || 123;
-  const r = await fetch(`/recommend?user_id=${uid}&k=12`);
+  const rankMode = document.getElementById('useRanker').checked ? 'deepfm' : 'fusion';
+  const r = await fetch(`/recommend?user_id=${uid}&k=12&rank_mode=${rankMode}`);
   const d = await r.json();
+  const scoreLabel = d.ranker === 'deepfm' ? '预估CTR' : '融合分';
   document.getElementById('recs').innerHTML = d.items.map(it => `
     <div class="item"><div><div class="t">${it.title} <span style="color:#8fa1c0;font-size:12px">${it.year||''}</span>
       ${it.channels.map(c => `<span class="badge">${c}</span>`).join('')}</div>
-      <div class="meta">${(it.genres||[]).join(' / ')} · ${it.n_ratings||0} 人评分 · 均分 ${it.avg_rating||'-'} · 分数 ${it.score}</div>
+      <div class="meta">${(it.genres||[]).join(' / ')} · ${it.n_ratings||0} 人评分 · 均分 ${it.avg_rating||'-'} · ${scoreLabel} ${it.ctr != null ? (it.ctr*100).toFixed(1)+'%' : it.score}</div>
     </div></div>`).join('');
   const counts = {};
   d.items.forEach(it => it.channels.forEach(c => counts[c] = (counts[c]||0)+1));

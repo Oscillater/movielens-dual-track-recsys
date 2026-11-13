@@ -183,6 +183,24 @@ def main():
     with open(f"{args.out}/{args.model}_metrics.json", "w", encoding="utf-8") as fh:
         json.dump({"args": vars(args), "history": history, "test": te, "best_val_auc": best_auc},
                   fh, ensure_ascii=False, indent=2)
+
+    # Online serving must reproduce the exact bucketing. Persist the training
+    # quantiles and field offsets together with the weights.
+    preprocess = {
+        "version": 1,
+        "feature_order": SPARSE + CONT,
+        "sparse_fields": SPARSE,
+        "continuous_fields": CONT,
+        "edges": {c: edges[c].tolist() for c in CONT},
+        "offsets": offsets,
+        "field_sizes": sizes,
+        "total_dim": total_dim,
+        "n_fields": len(SPARSE) + len(CONT),
+        "embed_dim": args.embed_dim,
+        "hidden": args.hidden,
+    }
+    with open(os.path.join(args.out, "preprocess.json"), "w", encoding="utf-8") as fh:
+        json.dump(preprocess, fh, ensure_ascii=False, indent=2)
     print("TEST", json.dumps(te))
 
 
