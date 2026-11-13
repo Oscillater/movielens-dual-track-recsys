@@ -9,7 +9,7 @@
 
 ## 一句话简介
 
-在自建三节点 Hadoop/Hive/Spark 集群上处理 MovieLens 25M（2500 万条评分），实现完整的判别式推荐漏斗：ALS / ItemCF / SASRec / 热门多路召回 → 排名融合 → MMR 多样性重排；同时实现受 TIGER / OneRec 启发的生成式推荐支线（RQ-KMeans 语义 ID + 小型 Transformer + trie 约束解码）。两条路线在同一评测协议下离线对比，并提供 FastAPI + ECharts 的在线搜推服务。
+在自建三节点 Hadoop/Hive/Spark 集群上处理 MovieLens 25M（2500 万条评分），实现完整的判别式推荐漏斗：ALS / ItemCF / SASRec / 热门多路召回 → 排名融合 → MMR 多样性重排；同时实现受 TIGER / OneRec 启发的生成式推荐支线（RQ-KMeans 语义 ID + 小型 Transformer + trie 约束解码）。两条路线在同一套指标与数据切分下离线对比（生成式因 CPU 解码成本按 2 万用户抽样），并提供 FastAPI + ECharts 的在线搜推服务。
 
 两条容易误解的工程事实：
 
