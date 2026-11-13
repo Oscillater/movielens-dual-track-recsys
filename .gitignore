@@ -23,3 +23,8 @@ Thumbs.db
 
 # 汇报 PDF 的页面预览（由 report/render_pages.py 生成）
 report/pages/
+
+# 本地文件（施工笔记与个人工作流，不入库）
+/PLAN.md
+/scripts/overnight.py
+/scripts/watcher2.py

@@ -2,7 +2,6 @@
 
 课程大作业（大数据架构的数据处理和分析系统），独立完成。
 
-- 施工清单与进度：[PLAN.md](PLAN.md)
 - 实验数字（自动生成）：[experiments/summary.md](experiments/summary.md)
 - 从零技术教程：[docs/tech-tutorial.md](docs/tech-tutorial.md)
 - 汇报 slides：[report/slides.pdf](report/slides.pdf)
