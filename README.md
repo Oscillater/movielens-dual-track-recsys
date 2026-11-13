@@ -3,7 +3,6 @@
 课程大作业（大数据架构的数据处理和分析系统），独立完成。
 
 - 实验数字（自动生成）：[experiments/summary.md](experiments/summary.md)
-- 从零技术教程：[docs/tech-tutorial.md](docs/tech-tutorial.md)
 - 汇报 slides：[report/slides.pdf](report/slides.pdf)
 
 ## 一句话简介
@@ -82,7 +81,6 @@ project/
   scripts/      # 汇总生成、在线路径重放、过夜接力
   experiments/  # 评测结果 JSON/Markdown 与系统截图
   report/       # Beamer 源文件、编译好的 PDF（页面预览本地生成、不入库）
-  docs/         # 从零技术教程
   data/         # 不入库：数据集与训练样本
   artifacts/    # 不入库：模型权重与指标
 ```
@@ -114,6 +112,6 @@ project/
 
 ## 交付状态
 
-- 已完成：集群环境、数仓、全部模型、统一评测与消融、FastAPI + 网页、PPT/PDF、系统截图、技术教程
+- 已完成：集群环境、数仓、全部模型、统一评测与消融、FastAPI + 网页、PPT/PDF、系统截图
 - 待用户提供：代码仓库远端地址（GitHub/Gitee）
 - 说明：模型权重与数据集不入库，按上方"数据与离线流程"重建；如需直接下载权重可在仓库 Release 中附带 `artifacts/` 压缩包
